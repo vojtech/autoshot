@@ -1,0 +1,61 @@
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.withType
+import org.jetbrains.dokka.gradle.DokkaExtension
+import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+import java.io.File
+
+/**
+ * A convention plugin that applies and configures Dokka for generating documentation
+ * across a multi-module Gradle project. The configuration ensures consistent settings
+ * for documentation generation and integrates Dokka plugins as necessary.
+ *
+ * This plugin performs the following:
+ * - Applies the "org.jetbrains.dokka" plugin to the root project and all subprojects.
+ * - Configures Dokka source sets for all subprojects with specific settings such as:
+ *   - Setting the JDK version for the documentation.
+ *   - Defining the source roots for Java and Kotlin source files.
+ * - Configures Dokka publications for generating HTML documentation outputs in a specific directory.
+ * - Adds Dokka-related dependencies, such as the Android documentation plugin, to all subprojects.
+ * - Configures all tasks of type `DokkaMultiModuleTask` to ensure the documentation output
+ *   directory is properly set to the appropriate build location.
+ *
+ * This convention plugin simplifies the setup of Dokka in projects with multiple modules,
+ * ensuring consistent documentation generation practices and centralized configuration.
+ */
+class DokkaConventionPlugin : Plugin<Project> {
+    override fun apply(target: Project) {
+
+        with(target) {
+            with(pluginManager) {
+                apply("org.jetbrains.dokka")
+            }
+
+            subprojects {
+                with(pluginManager) {
+                    apply("org.jetbrains.dokka")
+                }
+
+                target.extensions.configure(DokkaExtension::class.java) {
+                    dokkaSourceSets.configureEach {
+                        jdkVersion.set(17)
+                        sourceRoots.from(File("src/main/java"), File("src/main/kotlin"))
+                    }
+
+                    dokkaPublications.named("html") {
+                        outputDirectory.set(layout.buildDirectory.dir("dokka"))
+                    }
+                }
+
+                dependencies {
+                    add("dokkaPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
+                }
+            }
+
+            tasks.withType<DokkaMultiModuleTask>().configureEach {
+                outputDirectory.set(layout.buildDirectory.dir("dokka"))
+            }
+        }
+    }
+}

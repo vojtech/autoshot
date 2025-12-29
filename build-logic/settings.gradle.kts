@@ -12,4 +12,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "build-logic"
-include(":conventions")
+include(":android-application-plugin")
+include(":android-library-plugin")
+include(":android-compose-plugin")
+include(":dokka-plugin")
+include(":screenshot-plugin")

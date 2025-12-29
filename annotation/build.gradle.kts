@@ -19,9 +19,9 @@ plugins {
     alias(libs.plugins.dokka)
 }
 
-val artifactId = "autoshot-processor"
+val artifactId = "autoshot-annotation"
 group = "com.fediim"
-version = libs.versions.autoshot.processor.get()
+version = libs.versions.autoshot.annotation.get()
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -34,11 +34,6 @@ kotlin {
 
 dependencies {
     implementation(libs.ksp.api)
-    implementation(projects.annotation)
-    testImplementation(libs.mockk)
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlin.test)
-    testImplementation(libs.kotlin.compile.testing.ksp)
 }
 
 mavenPublishing {
@@ -49,10 +44,10 @@ mavenPublishing {
     coordinates(group.toString(), artifactId, version.toString())
 
     pom {
-        name = "AutoShot Processor"
-        description = "A Kotlin Symbol Processing (KSP) compiler plugin that scans source code for Jetpack Compose @Preview annotations and generates corresponding screenshot test wrappers."
+        name = "AutoShot Annotations"
+        description = "Defines the core annotations and API used by the AutoShot processor to identify and configure Composable targets for screenshot generation."
         inceptionYear = "2025"
-        url = "https://github.com/vojtech/autoshot"
+        url = "https://github.com/"
         licenses {
             license {
                 name = "The Apache License, Version 2.0"
@@ -68,9 +63,9 @@ mavenPublishing {
             }
         }
         scm {
-            url.set("https://github.com/vojtech/autoshot/")
-            connection.set("scm:git:git://github.com/vojtech/autoshot.git")
-            developerConnection.set("scm:git:ssh://git@github.com/vojtech/autoshot.git")
+            url.set("https://github.com/vojtech/mylibrary/")
+            connection.set("scm:git:git://github.com/vojtech/mylibrary.git")
+            developerConnection.set("scm:git:ssh://git@github.com/vojtech/mylibrary.git")
         }
     }
 }

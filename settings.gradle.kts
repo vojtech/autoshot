@@ -1,3 +1,5 @@
+rootProject.name = "autoshot"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
     repositories {
@@ -9,6 +11,7 @@ pluginManagement {
             }
         }
         mavenCentral()
+        mavenLocal()
         gradlePluginPortal()
     }
 }
@@ -16,14 +19,18 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
+        mavenLocal()
         mavenCentral()
     }
 }
 
-rootProject.name = "screenshot-test-automator"
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include(":app")
-include(":processor")
-include(":feature")
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version ("1.0.0")
+}
+
 includeBuild("build-logic")
-    
+include(":example:app")
+include(":example:feature")
+include(":docs")
+include(":annotation")
+include(":processor")

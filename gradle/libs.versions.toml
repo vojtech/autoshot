@@ -1,31 +1,31 @@
 [versions]
 compileSdk = "36"
+kotlinCompileTestingKsp = "1.6.0"
 targetSdk = "36"
 minSdk = "28"
 agp = "8.13.2"
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.1"
-composeBom = "2025.12.00"
+composeBom = "2025.12.01"
 ksp = "2.3.3"
 dokka = "2.1.0"
 ktlint = "14.0.1"
-hilt = "2.57.2"
-hiltExt = "1.2.0"
-hilt-navigation-compose = "1.3.0"
-appcompat = "1.7.1"
-material = "1.13.0"
 jacoco = "0.8.12"
 datastore = "1.2.0"
 startup = "1.2.0"
 mockk = "1.14.7"
-turbine = "1.2.1"
 coroutines = "1.10.2"
-screenshot = "0.0.1-alpha12"
+screenshot = "0.0.1-alpha11"
+screenshot-validation-api = "0.0.1-alpha11"
+vanniktechMavenPublish = "0.35.0"
+autoshot-processor = "1.0.0-alpha01"
+autoshot-annotation = "1.0.0-alpha01"
+autoshot-plugin = "1.0.0-alpha01"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,15 +44,14 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-startup = { group = "androidx.startup", name = "startup-runtime", version.ref = "startup" }
-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
-hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
-androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
-hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
-hilt-core = { group = "com.google.dagger", name = "hilt-core", version.ref = "hilt" }
 dokka = { group = "org.jetbrains.dokka", name = "versioning-plugin", version.ref = "dokka" }
+kotlin-compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile-testing-ksp", version.ref = "kotlinCompileTestingKsp" }
+screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot-validation-api" }
+autoshot-processor = { group = "com.fediim", name = "autoshot-processor", version.ref = "autoshot-processor" }
+autoshot-annotation = { group = "com.fediim", name = "autoshot-annotation", version.ref = "autoshot-annotation" }
 
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
-turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 android-gradle-plugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
@@ -60,12 +59,9 @@ kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-p
 ksp-gradle-plugin = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
 ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 dokka-gradle-plugin = { group = "org.jetbrains.dokka", name = "dokka-gradle-plugin", version.ref = "dokka" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot"}
 
 [bundles]
-testing-unit = ["junit", "androidx-junit", "mockk", "turbine", "kotlinx-coroutines-test"]
+testing-unit = ["junit", "androidx-junit", "mockk", "kotlinx-coroutines-test"]
 
 
 [plugins]
@@ -74,15 +70,13 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
-screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot"}
-fediim-android-application = { id = "fediim.android.application" }
-fediim-android-library = { id = "fediim.android.library" }
-fediim-android-hilt = { id = "fediim.android.hilt" }
-fediim-android-compose = { id = "fediim.android.compose" }
-fediim-android-dokka = { id = "fediim.dokka" }
-fediim-android-jacoco = { id = "fediim.jacoco" }
-fediim-screenshot = { id = "fediim.screenshot" }
+screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
+fediim-android-application = { id = "com.fediim.plugin.android.application" }
+fediim-android-library = { id = "com.fediim.plugin.android.library" }
+fediim-android-compose = { id = "com.fediim.plugin.android.compose" }
+fediim-android-dokka = { id = "com.fediim.plugin.dokka" }
+fediim-screenshot = { id = "com.fediim.plugin.autoshot" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktechMavenPublish" }
