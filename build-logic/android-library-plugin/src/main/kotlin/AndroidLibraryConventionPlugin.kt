@@ -34,6 +34,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                 apply("com.android.library")
                 apply("org.jetbrains.kotlin.android")
                 apply("org.jlleitschuh.gradle.ktlint")
+                // apply("com.fediim.jacoco") // Commenting out as I haven't found this plugin yet
             }
 
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
