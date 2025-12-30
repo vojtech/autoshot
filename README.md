@@ -57,14 +57,31 @@ android.experimental.enableScreenshotTest=true
 
 ### 3. Configure Version Catalog (libs.versions.toml)
 
-Add the plugin to your `gradle/libs.versions.toml` file:
+Add the plugin and the screenshot library to your `gradle/libs.versions.toml` file:
 
 ```toml
+[versions]
+screenshot = "0.0.1-alpha12"
+
+[libraries]
+screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
+
 [plugins]
+screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
 fediim-screenshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
 ```
 
-### 4. Apply the Plugin
+### 4. Apply the Screenshot Plugin in Root build.gradle.kts
+
+In your root `build.gradle.kts`, apply the screenshot plugin (but don't activate it):
+
+```kotlin
+plugins {
+    alias(libs.plugins.screenshot) apply false
+}
+```
+
+### 5. Apply the Plugin in Your Module
 
 In your module's `build.gradle.kts` (e.g., `feature/build.gradle.kts`), apply the screenshot plugin. This plugin automatically handles the KSP setup and dependencies.
 
@@ -83,22 +100,44 @@ plugins {
 }
 ```
 
-### 5. Annotate Your Composables
+### 6. Annotate Your Composables
 
 The processor looks for any function annotated with `@Preview` or any annotation that is itself annotated with `@Preview` (meta-annotations like `@PreviewLightDark`).
 
+**Important:** Preview functions must not be private so they can be accessed from the `screenshotTest` source set. To exclude a Preview from testing, you can either:
+*   Make the preview function `private`
+*   Use the `@IgnorePreview` annotation
+
 ```kotlin
 @Composable
-@Preview
 @PreviewLightDark
 fun MyComposablePreview() {
     MyTheme {
         MyComposable()
     }
 }
+
+// This preview will be ignored
+@Composable
+@Preview
+@IgnorePreview
+fun MyComposablePreviewIgnored() {
+    MyTheme {
+        MyComposable()
+    }
+}
+
+// This preview will also be ignored (private)
+@Composable
+@Preview
+private fun MyComposablePreviewPrivate() {
+    MyTheme {
+        MyComposable()
+    }
+}
 ```
 
-### 6. Run Screenshot Tests
+### 7. Run Screenshot Tests
 
 The plugin registers a task to run the tests. Since this setup uses the Android Screenshot Testing library, you typically run:
 
@@ -130,7 +169,3 @@ fun MyComposablePreviewScreenshotTest() {
 The processor is configured to exclude files in `/generated/`, `/test/`, `/androidTest/`, and `/screenshotTest/` to prevent infinite recursion.
 
 The convention plugin automatically copies the generated KSP files to `src/screenshotTest/kotlin` so they are picked up by the screenshot testing source set.
-
-## Known Issues
-
-*   **Configuration Cache:** The plugin might not be fully compatible with Gradle Configuration Cache yet. If you encounter issues, try running with `--no-configuration-cache`.
