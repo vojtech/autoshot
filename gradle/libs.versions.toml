@@ -26,6 +26,7 @@ vanniktechMavenPublish = "0.35.0"
 autoshot-processor = "1.0.0-alpha01"
 autoshot-annotation = "1.0.0-alpha01"
 autoshot-plugin = "1.0.0-alpha01"
+kotlinPoet = "2.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +50,8 @@ kotlin-compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile
 screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot-validation-api" }
 autoshot-processor = { group = "com.fediim", name = "autoshot-processor", version.ref = "autoshot-processor" }
 autoshot-annotation = { group = "com.fediim", name = "autoshot-annotation", version.ref = "autoshot-annotation" }
+kotlinPoet = { group = "com.squareup", name = "kotlinpoet", version.ref = "kotlinPoet" }
+kotlinPoetKsp = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinPoet" }
 
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
