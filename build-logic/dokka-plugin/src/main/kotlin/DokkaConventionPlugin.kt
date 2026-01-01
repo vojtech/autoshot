@@ -17,9 +17,7 @@
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
-import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
 import java.io.File
 
 /**
@@ -52,7 +50,7 @@ class DokkaConventionPlugin : Plugin<Project> {
                     apply("org.jetbrains.dokka")
                 }
 
-                target.extensions.configure(DokkaExtension::class.java) {
+                extensions.configure(DokkaExtension::class.java) {
                     dokkaSourceSets.configureEach {
                         jdkVersion.set(17)
                         sourceRoots.from(File("src/main/java"), File("src/main/kotlin"))
@@ -67,10 +65,6 @@ class DokkaConventionPlugin : Plugin<Project> {
                     add("dokkaHtmlPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
                     add("dokkaHtmlPlugin", "org.jetbrains.dokka:versioning-plugin:2.1.0")
                 }
-            }
-
-            tasks.withType<DokkaMultiModuleTask>().configureEach {
-                outputDirectory.set(layout.buildDirectory.dir("dokka"))
             }
         }
     }

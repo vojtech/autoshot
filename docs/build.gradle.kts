@@ -32,6 +32,9 @@ val currentVersion = libs.versions.autoshot.docs.get()
 val previousVersionsDirectory: Directory = layout.projectDirectory.dir("versions")
 
 dokka {
+    dokkaPublications.html {
+        outputDirectory = layout.projectDirectory.dir("latest")
+    }
     pluginsConfiguration {
         versioning {
             version = currentVersion
@@ -54,5 +57,12 @@ tasks.register<Copy>("archiveDocumentation") {
 
     doLast {
         println("Documentation for version $currentVersion archived to ${destinationDir.path}")
+
+        // Delete the "older" folder inside the destination if it exists
+        val olderDir = destinationDir.resolve("older")
+        if (olderDir.exists()) {
+            olderDir.deleteRecursively()
+            println("Deleted 'older' directory from archive.")
+        }
     }
 }

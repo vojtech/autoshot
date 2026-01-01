@@ -23,3 +23,7 @@ publish-all: publish-processor publish-annotation publish-plugins
 # Apply Spotless formatting
 format:
 	./gradlew --init-script gradle/init.gradle.kts spotlessApply
+
+# Generate documentation
+publish-docs:
+	./gradlew :docs:archiveDocumentation
