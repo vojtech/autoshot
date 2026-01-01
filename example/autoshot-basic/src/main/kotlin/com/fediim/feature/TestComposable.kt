@@ -25,26 +25,26 @@ import com.fediim.autoshot.annotation.IgnorePreview
 
 @Preview
 @Composable
-fun TestComposable() {
+internal fun TestComposable() {
     Text("Hello, World!")
 }
 
 @Preview
 @Composable
-fun TestComposable(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
+internal fun TestComposable(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }
 
 @PreviewLightDark
 @Composable
-fun TestComposableLD(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
+internal fun TestComposableLD(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }
 
 @IgnorePreview
 @PreviewLightDark
 @Composable
-fun TestComposableLDIgnore(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
+internal fun TestComposableLDIgnore(@PreviewParameter(ScreenshotTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }
 

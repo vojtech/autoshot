@@ -11,11 +11,11 @@ publish-plugins:
 
 # Publish the KSP processor to Maven Local
 publish-processor:
-	./gradlew :processor:publishToMavenLocal
+	./gradlew :autoshot-processor:publishToMavenLocal
 
 # Publish the KSP Annotation to Maven Local
 publish-annotation:
-	./gradlew :annotation:publishToMavenLocal
+	./gradlew :autoshot-annotation:publishToMavenLocal
 
 # Publish everything
 publish-all: publish-processor publish-annotation publish-plugins

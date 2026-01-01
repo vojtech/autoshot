@@ -28,6 +28,7 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSValueArgument
 import com.google.devtools.ksp.symbol.Origin
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ClassName
@@ -37,7 +38,10 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
+import java.io.File
+import java.io.FileOutputStream
 import java.io.OutputStreamWriter
+import kotlin.concurrent.write
 
 /**
  * `ScreenshotProcessor` is a Kotlin Symbol Processor (KSP) class responsible for identifying functions
@@ -60,6 +64,7 @@ class ScreenshotProcessor(
     }
 
     private val generatedFiles = mutableSetOf<String>()
+    private val privatePreviewViolations = mutableListOf<Pair<String, String>>() // Pair<FilePath, FunctionName>
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         resolver.getSymbolsWithAnnotation(AnnotationImports.PREVIEW)
@@ -81,6 +86,10 @@ class ScreenshotProcessor(
                 processSourceFile(sourceFile)
             }
 
+        if (privatePreviewViolations.isNotEmpty()) {
+            writeViolationReport()
+        }
+
         return emptyList()
     }
 
@@ -100,8 +109,20 @@ class ScreenshotProcessor(
      * @param sourceFile The source file to be processed, represented as a `KSFile`.
      */
     private fun processSourceFile(sourceFile: KSFile) {
-        val functions = sourceFile.declarations
-            .filterIsInstance<KSFunctionDeclaration>()
+        val allFunctions = sourceFile.declarations.filterIsInstance<KSFunctionDeclaration>()
+
+        allFunctions.forEach { func ->
+            val isPreviewFunc = func.annotations.any { annotation ->
+                val annotationType = annotation.annotationType.resolve().declaration as? KSClassDeclaration
+                annotationType != null && isPreview(annotationType)
+            }
+
+            if (isPreviewFunc && func.isPrivate()) {
+                privatePreviewViolations.add(sourceFile.filePath to func.simpleName.asString())
+            }
+        }
+
+        val validFunctions = allFunctions
             .filter { !it.isPrivate() }
             .filter { func ->
                 func.annotations.none { annotation ->
@@ -123,8 +144,8 @@ class ScreenshotProcessor(
                 }
             }.toList()
 
-        if (functions.isNotEmpty()) {
-            generateTestFile(sourceFile, functions)
+        if (validFunctions.isNotEmpty()) {
+            generateTestFile(sourceFile, validFunctions)
         }
     }
 
@@ -220,13 +241,11 @@ class ScreenshotProcessor(
             funSpecBuilder.addModifiers(KModifier.INTERNAL)
         }
 
-        // Add PreviewTest and Composable annotations
-        funSpecBuilder.addAnnotation(ClassName("com.android.tools.screenshot", "PreviewTest"))
-        funSpecBuilder.addAnnotation(ClassName("androidx.compose.runtime", "Composable"))
+        funSpecBuilder.addAnnotation(ClassName(AnnotationImports.PREVIEW_TEST, AnnotationNames.PREVIEW_TEST))
+        funSpecBuilder.addAnnotation(ClassName(AnnotationImports.COMPOSABLE, AnnotationNames.COMPOSABLE))
 
-        // Add preview annotations
         previewAnnotations.forEach { annotation ->
-            funSpecBuilder.addAnnotation(annotation.toAnnotationSpec())
+            funSpecBuilder.addAnnotation(filterAnnotationArguments(annotation).toAnnotationSpec())
         }
 
         val previewParameter = function.parameters.find { param ->
@@ -239,7 +258,7 @@ class ScreenshotProcessor(
             val annotation = previewParameter.annotations.first { it.shortName.asString() == AnnotationNames.PREVIEW_PARAMETER }
 
             val paramSpec = ParameterSpec.builder(paramName, paramType)
-                .addAnnotation(annotation.toAnnotationSpec())
+                .addAnnotation(filterAnnotationArguments(annotation).toAnnotationSpec())
                 .build()
 
             funSpecBuilder.addParameter(paramSpec)
@@ -249,5 +268,44 @@ class ScreenshotProcessor(
         }
 
         return funSpecBuilder.build()
+    }
+
+    /**
+     * Creates a proxy KSAnnotation that filters out arguments that match the default values
+     * defined in the annotation class.
+     */
+    private fun filterAnnotationArguments(annotation: KSAnnotation): KSAnnotation {
+        val defaultArguments = annotation.defaultArguments.associate { it.name?.asString() to it.value }
+
+        val filteredArguments = annotation.arguments.filter { arg ->
+            val name = arg.name?.asString()
+            val value = arg.value
+            val defaultValue = defaultArguments[name]
+
+            name == null || defaultValue == null || value != defaultValue
+        }
+
+        return object : KSAnnotation by annotation {
+            override val arguments: List<KSValueArgument> = filteredArguments
+        }
+    }
+
+    private fun writeViolationReport() {
+        val reportFile = File("build/autoshot/preview_visibility_report.txt")
+        reportFile.parentFile.mkdirs()
+
+        val uniqueViolations = if (reportFile.exists()) {
+            reportFile.readLines().filter { it.isNotBlank() }.toMutableSet()
+        } else {
+            mutableSetOf()
+        }
+
+        privatePreviewViolations.forEach { (path, func) ->
+            uniqueViolations.add("$path|$func")
+        }
+
+        reportFile.writeText(uniqueViolations.joinToString("\n"))
+
+        privatePreviewViolations.clear()
     }
 }
