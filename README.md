@@ -1,6 +1,6 @@
-# Screenshot Test Automator
+# AutoShot
 
-This project provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications. It consists of a KSP processor that generates test entry points from `@Preview` annotations and a set of Gradle convention plugins to simplify the setup.
+AutoShot provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications. It consists of a KSP processor that generates test entry points from `@Preview` annotations and a set of Gradle convention plugins to simplify the setup.
 
 ## Components
 

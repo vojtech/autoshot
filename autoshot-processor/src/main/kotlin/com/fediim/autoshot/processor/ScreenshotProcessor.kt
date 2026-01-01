@@ -108,7 +108,6 @@ class ScreenshotProcessor(
                     annotation.annotationType.resolve().declaration.qualifiedName?.asString() == IgnorePreview::class.qualifiedName
                 }
             }
-
             .mapNotNull { func ->
                 if (!func.validate()) return@mapNotNull null
 

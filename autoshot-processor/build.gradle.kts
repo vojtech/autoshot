@@ -34,7 +34,7 @@ kotlin {
 
 dependencies {
     implementation(libs.ksp.api)
-    implementation(projects.annotation)
+    implementation(projects.autoshotAnnotation)
     implementation(libs.kotlinPoet)
     implementation(libs.kotlinPoetKsp)
     testImplementation(libs.mockk)

@@ -24,13 +24,19 @@ dependencyResolutionManagement {
     }
 }
 
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.dokka:versioning-plugin:2.1.0")
+    }
+}
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version ("1.0.0")
 }
 
 includeBuild("build-logic")
-include(":example:app")
-include(":example:feature")
+include(":example:dokka-screenshot")
+include(":example:autoshot-basic")
 include(":docs")
-include(":annotation")
-include(":processor")
+include(":autoshot-annotation")
+include(":autoshot-processor")

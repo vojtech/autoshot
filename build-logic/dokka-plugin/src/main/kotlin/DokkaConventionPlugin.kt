@@ -49,7 +49,8 @@ class DokkaConventionPlugin : Plugin<Project> {
                 }
 
                 dependencies {
-                    add("dokkaPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
+                    add("dokkaHtmlPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
+                    add("dokkaHtmlPlugin","org.jetbrains.dokka:versioning-plugin:2.1.0")
                 }
             }
 
