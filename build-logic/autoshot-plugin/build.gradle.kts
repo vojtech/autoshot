@@ -40,7 +40,7 @@ gradlePlugin {
     plugins {
         register("screenshot") {
             id = "com.fediim.plugin.autoshot"
-            implementationClass = "ScreenshotConventionPlugin"
+            implementationClass = "AutoShotConventionPlugin"
             displayName = "Fediim Screenshot Test Plugin"
             description = "Automates setup for screenshot testing with KSP and Android"
         }
