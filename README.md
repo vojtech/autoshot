@@ -210,6 +210,16 @@ You can run tests for a specific module or for the entire project.
 *   Single module: `./gradlew :feature:home:screenshotDebug`
 *   All modules: `./gradlew screenshotDebug` (runs screenshot tests for all modules that have the plugin applied)
 
+## Utilities
+
+### Fix Preview Visibility
+
+Screenshot tests require `@Preview` functions to be accessible (at least `internal`). If you have `private` previews that you wish to test, you can use the `updatePreviewVisibility` task to automatically change their visibility to `internal`.
+
+```bash
+./gradlew updatePreviewVisibility
+```
+
 ## Configuration
 
 The processor is configured to exclude files in `/generated/`, `/test/`, `/androidTest/`, and `/screenshotTest/` to prevent infinite recursion.
