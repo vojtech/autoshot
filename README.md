@@ -164,6 +164,52 @@ fun MyComposablePreviewScreenshotTest() {
 }
 ```
 
+## Multi-Module Project Setup
+
+For multi-module projects, you can choose to apply the plugin individually to each module or centrally via the root build file.
+
+### Option 1: Individual Module Configuration
+
+Apply the `com.fediim.plugin.autoshot` plugin to every Android Library or Application module where you want to generate screenshot tests.
+
+```kotlin
+// feature/home/build.gradle.kts
+plugins {
+    alias(libs.plugins.fediim.screenshot)
+}
+```
+
+### Option 2: Centralized Configuration (subprojects)
+
+You can apply the plugin to all Android modules automatically using the `subprojects` block in your root `build.gradle.kts`. This ensures that any module with the Android plugin applied will also get the AutoShot capabilities.
+
+```kotlin
+// root build.gradle.kts
+plugins {
+    // Ensure the plugin is on the classpath
+    alias(libs.plugins.fediim.screenshot) apply false
+}
+
+subprojects {
+    // Apply AutoShot to all Android Application or Library modules
+    val autoshotPluginId = "com.fediim.plugin.autoshot"
+
+    pluginManager.withPlugin("com.android.application") {
+        apply(plugin = autoshotPluginId)
+    }
+
+    pluginManager.withPlugin("com.android.library") {
+        apply(plugin = autoshotPluginId)
+    }
+}
+```
+
+### Running Tests
+
+You can run tests for a specific module or for the entire project.
+*   Single module: `./gradlew :feature:home:screenshotDebug`
+*   All modules: `./gradlew screenshotDebug` (runs screenshot tests for all modules that have the plugin applied)
+
 ## Configuration
 
 The processor is configured to exclude files in `/generated/`, `/test/`, `/androidTest/`, and `/screenshotTest/` to prevent infinite recursion.
