@@ -19,3 +19,7 @@ publish-annotation:
 
 # Publish everything
 publish-all: publish-processor publish-annotation publish-plugins
+
+# Apply Spotless formatting
+format:
+	./gradlew --init-script gradle/init.gradle.kts spotlessApply
