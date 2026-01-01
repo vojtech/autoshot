@@ -68,7 +68,7 @@ screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot"
 
 [plugins]
 screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
-fediim-screenshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
+fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
 ```
 
 ### 4. Apply the Screenshot Plugin in Root build.gradle.kts
@@ -89,7 +89,7 @@ In your module's `build.gradle.kts` (e.g., `feature/build.gradle.kts`), apply th
 ```kotlin
 plugins {
     // ... other plugins
-    alias(libs.plugins.fediim.screenshot)
+    alias(libs.plugins.fediim.autoshot)
 }
 ```
 
@@ -175,7 +175,7 @@ Apply the `com.fediim.plugin.autoshot` plugin to every Android Library or Applic
 ```kotlin
 // feature/home/build.gradle.kts
 plugins {
-    alias(libs.plugins.fediim.screenshot)
+    alias(libs.plugins.fediim.autoshot)
 }
 ```
 
@@ -187,7 +187,7 @@ You can apply the plugin to all Android modules automatically using the `subproj
 // root build.gradle.kts
 plugins {
     // Ensure the plugin is on the classpath
-    alias(libs.plugins.fediim.screenshot) apply false
+    alias(libs.plugins.fediim.autoshot) apply false
 }
 
 subprojects {
