@@ -16,13 +16,18 @@
 
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.variant.AndroidComponentsExtension
+import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.register
+import java.io.File
 import java.util.Locale
 
 /**
@@ -89,7 +94,65 @@ class ScreenshotConventionPlugin : Plugin<Project> {
                     }
                 }
             }
+
+            tasks.register<FixPreviewVisibilityTask>("updatePreviewVisibility") {
+                group = "autoshot"
+                description = "Reads KSP report and changes private @Preview functions to internal."
+                reportFile.set(layout.buildDirectory.file("generated/autoshot/visibility_report.txt"))
+            }
         }
+    }
+}
+
+abstract class FixPreviewVisibilityTask : DefaultTask() {
+    @get:Internal
+    abstract val reportFile: RegularFileProperty
+
+    @TaskAction
+    fun fixVisibility() {
+        val file = reportFile.orNull?.asFile
+        if (file == null || !file.exists()) {
+            println("✅ No private previews detected.")
+            return
+        }
+
+        val reportEntries = file.readLines().filter { it.isNotBlank() }.distinct()
+        if (reportEntries.isEmpty()) return
+
+        val filesWithViolations = reportEntries
+            .map { it.split("|") }
+            .groupBy({ it[0] }, { it[1] })
+
+        val fixedCount = fixVisibilityInFiles(filesWithViolations)
+
+        file.delete()
+        println("🎉 Fixed $fixedCount private @Preview functions.")
+    }
+
+    private fun fixVisibilityInFiles(violationsByFile: Map<String, List<String>>): Int {
+        var totalFixed = 0
+        violationsByFile.forEach { (filePath, functionNames) ->
+            val sourceFile = File(filePath)
+            if (sourceFile.exists()) {
+                var content = sourceFile.readText()
+                var isModified = false
+
+                functionNames.forEach { funcName ->
+                    val regex = Regex("""private(\s+fun\s+$funcName)""")
+                    if (regex.containsMatchIn(content)) {
+                        content = regex.replace(content, "internal$1")
+                        isModified = true
+                        totalFixed++
+                    }
+                }
+
+                if (isModified) {
+                    sourceFile.writeText(content)
+                    println("Fixed visibility in: ${sourceFile.name}")
+                }
+            }
+        }
+        return totalFixed
     }
 }
 

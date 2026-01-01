@@ -39,9 +39,7 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import java.io.File
-import java.io.FileOutputStream
 import java.io.OutputStreamWriter
-import kotlin.concurrent.write
 
 /**
  * `ScreenshotProcessor` is a Kotlin Symbol Processor (KSP) class responsible for identifying functions
@@ -291,7 +289,15 @@ class ScreenshotProcessor(
     }
 
     private fun writeViolationReport() {
-        val reportFile = File("build/autoshot/preview_visibility_report.txt")
+        val firstViolationPath = privatePreviewViolations.first().first
+        val moduleRoot = findModuleRoot(firstViolationPath)
+
+        val reportFile = if (moduleRoot != null) {
+            File(moduleRoot, "build/generated/autoshot/visibility_report.txt")
+        } else {
+            File("build/generated/autoshot/visibility_report.txt")
+        }
+
         reportFile.parentFile.mkdirs()
 
         val uniqueViolations = if (reportFile.exists()) {
@@ -307,5 +313,16 @@ class ScreenshotProcessor(
         reportFile.writeText(uniqueViolations.joinToString("\n"))
 
         privatePreviewViolations.clear()
+    }
+
+    private fun findModuleRoot(filePath: String): File? {
+        var file = File(filePath)
+        while (file.parentFile != null) {
+            if (file.name == "src" && file.isDirectory) {
+                return file.parentFile
+            }
+            file = file.parentFile
+        }
+        return null
     }
 }
