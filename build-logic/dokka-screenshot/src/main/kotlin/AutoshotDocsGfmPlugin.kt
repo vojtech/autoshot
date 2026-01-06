@@ -24,7 +24,6 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
-import org.gradle.kotlin.dsl.dependencies
 import java.io.File
 
 
@@ -41,11 +40,6 @@ class AutoshotDocsGfmPlugin : Plugin<Project> {
                 }
                 outputDir.set(layout.buildDirectory.dir("docs/autoshot-docs/gfm"))
                 moduleName.set(project.name)
-            }
-
-            dependencies {
-                add("dokkaHtmlPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
-                add("dokkaHtmlPlugin", "org.jetbrains.dokka:versioning-plugin:2.1.0")
             }
         }
     }

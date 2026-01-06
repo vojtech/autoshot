@@ -7,7 +7,8 @@ publish-plugins:
 	:build-logic:android-library-plugin:publishToMavenLocal \
 	:build-logic:android-compose-plugin:publishToMavenLocal \
 	:build-logic:dokka-plugin:publishToMavenLocal \
-	:build-logic:autoshot-plugin:publishToMavenLocal
+	:build-logic:autoshot-plugin:publishToMavenLocal \
+	:build-logic:dokka-screenshot:publishToMavenLocal
 
 # Publish the KSP processor to Maven Local
 publish-processor:
