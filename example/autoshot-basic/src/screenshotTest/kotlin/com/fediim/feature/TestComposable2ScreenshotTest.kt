@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Fediim Open Source Project
+ * Copyright 2026 The Fediim Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-plugins {
-    alias(libs.plugins.fediim.android.application)
-    alias(libs.plugins.fediim.android.compose)
-    alias(libs.plugins.fediim.screenshot)
-    alias(libs.plugins.fediim.android.dokka)
-    alias(libs.plugins.fediim.dokka)
-}
 
-android {
-    namespace = "com.fediim.feature"
+package com.fediim.feature
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+import com.android.tools.screenshot.PreviewTest
+
+@PreviewTest
+@Composable
+@Preview
+internal fun AnotherComposableScreenshotTest() {
+    AnotherComposable()
 }

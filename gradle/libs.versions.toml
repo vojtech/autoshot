@@ -34,7 +34,9 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-dokka = { group = "org.jetbrains.dokka", name = "versioning-plugin", version.ref = "dokka" }
+dokka-versioning = { group = "org.jetbrains.dokka", name = "versioning-plugin", version.ref = "dokka" }
+dokka-core = { group = "org.jetbrains.dokka", name = "dokka-core", version.ref = "dokka" }
+dokka-base = { group = "org.jetbrains.dokka", name = "dokka-base", version.ref = "dokka" }
 kotlin-compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile-testing-ksp", version.ref = "kotlinCompileTestingKsp" }
 screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot-validation-api" }
 autoshot-processor = { group = "com.fediim", name = "autoshot-processor", version.ref = "autoshot-processor" }
@@ -66,5 +68,6 @@ fediim-android-library = { id = "com.fediim.plugin.android.library" }
 fediim-android-compose = { id = "com.fediim.plugin.android.compose" }
 fediim-android-dokka = { id = "com.fediim.plugin.dokka" }
 fediim-screenshot = { id = "com.fediim.plugin.autoshot" }
+fediim-dokka = { id = "com.fediim.plugin.autoshot.docs.gfm" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktechMavenPublish" }

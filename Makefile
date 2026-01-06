@@ -27,3 +27,12 @@ format:
 # Generate documentation
 publish-docs:
 	./gradlew :docs:archiveDocumentation
+
+# Update screenshots
+update:
+	./gradlew :example:autoshot-basic:updateDebugScreenshotTest
+
+
+# Generate dokka
+dokka:
+	./gradlew :example:autoshot-basic:dokkaGenerate

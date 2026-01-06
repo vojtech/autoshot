@@ -21,7 +21,7 @@ plugins {
 dependencies {
     dokka(projects.autoshotProcessor)
     dokka(projects.autoshotAnnotation)
-    dokkaHtmlPlugin(libs.dokka)
+    dokkaHtmlPlugin(libs.dokka.versioning)
 }
 
 dokka {

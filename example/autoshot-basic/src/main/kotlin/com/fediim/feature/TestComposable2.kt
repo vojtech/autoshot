@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-plugins {
-    alias(libs.plugins.fediim.android.application)
-    alias(libs.plugins.fediim.android.compose)
-    alias(libs.plugins.fediim.screenshot)
-    alias(libs.plugins.fediim.android.dokka)
-    alias(libs.plugins.fediim.dokka)
-}
 
-android {
-    namespace = "com.fediim.feature"
+package com.fediim.feature
+
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+
+@Preview
+@Composable
+internal fun AnotherComposable() {
+    Text("Hello, Wofghgffgrld!")
 }
