@@ -24,6 +24,7 @@ plugins {
     alias(libs.plugins.dokka) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.screenshot) apply false
+    alias(libs.plugins.fediim.dokka) apply false
     alias(libs.plugins.fediim.android.application) apply false
     alias(libs.plugins.fediim.android.library) apply false
     alias(libs.plugins.fediim.android.compose) apply false

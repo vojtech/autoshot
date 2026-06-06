@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Fediim Open Source Project
+ * Copyright 2026 The Fediim Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,30 @@
  * limitations under the License.
  */
 plugins {
-    alias(libs.plugins.fediim.android.application)
-    alias(libs.plugins.fediim.android.compose)
-    alias(libs.plugins.fediim.screenshot)
-    alias(libs.plugins.fediim.android.dokka)
-    alias(libs.plugins.fediim.dokka)
+    `kotlin-dsl`
+    `maven-publish`
 }
 
-android {
-    namespace = "com.fediim.feature"
+group = "com.fediim"
+version = "1.0.0"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+
+gradlePlugin {
+    plugins {
+        register("AutoshotDocsGFM") {
+            id = "com.fediim.plugin.autoshot.docs.gfm"
+            implementationClass = "AutoshotDocsGfmPlugin"
+            displayName = "Fediim Dokka Plugin"
+            description = "Convention plugin for Dokka"
+        }
+    }
 }

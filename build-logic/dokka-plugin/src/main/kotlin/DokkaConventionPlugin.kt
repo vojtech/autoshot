@@ -45,26 +45,20 @@ class DokkaConventionPlugin : Plugin<Project> {
                 apply("org.jetbrains.dokka")
             }
 
-            subprojects {
-                with(pluginManager) {
-                    apply("org.jetbrains.dokka")
+            extensions.configure(DokkaExtension::class.java) {
+                dokkaSourceSets.configureEach {
+                    jdkVersion.set(17)
+//                    sourceRoots.from(File("src/main/java"), File("src/main/kotlin"))
                 }
 
-                extensions.configure(DokkaExtension::class.java) {
-                    dokkaSourceSets.configureEach {
-                        jdkVersion.set(17)
-                        sourceRoots.from(File("src/main/java"), File("src/main/kotlin"))
-                    }
-
-                    dokkaPublications.named("html") {
-                        outputDirectory.set(layout.buildDirectory.dir("dokka"))
-                    }
+                dokkaPublications.named("html") {
+                    outputDirectory.set(layout.buildDirectory.dir("dokka"))
                 }
+            }
 
-                dependencies {
-                    add("dokkaHtmlPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
-                    add("dokkaHtmlPlugin", "org.jetbrains.dokka:versioning-plugin:2.1.0")
-                }
+            dependencies {
+                add("dokkaHtmlPlugin", "org.jetbrains.dokka:android-documentation-plugin:2.1.0")
+                add("dokkaHtmlPlugin", "org.jetbrains.dokka:versioning-plugin:2.1.0")
             }
         }
     }

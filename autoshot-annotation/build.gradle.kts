@@ -33,7 +33,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.ksp.api)
 }
 
 mavenPublishing {
