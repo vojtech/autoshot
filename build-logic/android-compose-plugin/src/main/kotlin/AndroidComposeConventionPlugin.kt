@@ -19,6 +19,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.findByType
 import org.gradle.kotlin.dsl.getByType
 
 /**
@@ -47,13 +48,11 @@ class AndroidComposeConventionPlugin : Plugin<Project> {
 
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
-            val extension = extensions.findByType(CommonExtension::class.java)
+            val extension = extensions.findByType(CommonExtension::class)
                 ?: throw IllegalStateException("Could not find Android extension")
 
-            with(extension) {
-                buildFeatures {
-                    compose = true
-                }
+            extension.apply {
+                buildFeatures.compose = true
             }
 
             dependencies {

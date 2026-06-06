@@ -24,3 +24,8 @@ plugins {
 android {
     namespace = "com.fediim.feature"
 }
+
+autoshot {
+    useKsp.set(false)
+    customAnnotations.set(listOf("com.fediim.feature.CustomAnnotation"))
+}
