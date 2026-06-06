@@ -50,6 +50,6 @@ internal fun TestComposableLDIgnore(@PreviewParameter(ScreenshotTestParameterPro
 
 @CustomAnnotation
 @Composable
-private fun TestComposableWithCustomAnnotation() {
+internal fun TestComposableWithCustomAnnotation() {
     Text("Hello, World!")
 }

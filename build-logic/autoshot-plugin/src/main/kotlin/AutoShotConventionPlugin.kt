@@ -108,15 +108,16 @@ class AutoShotConventionPlugin : Plugin<Project> {
             val allMethod = selectorObj.javaClass.getMethod("all")
             val allSelector = allMethod.invoke(selectorObj)
 
-            val onVariantsMethod = androidComponents.javaClass.methods.first {
-                it.name == "onVariants" && it.parameterCount == 2
+            val onVariantsMethod = androidComponents.javaClass.methods.firstOrNull {
+                it.name == "onVariants" &&
+                it.parameterCount == 2 &&
+                it.parameterTypes[1].name == "org.gradle.api.Action"
+            } ?: androidComponents.javaClass.methods.first {
+                it.name == "onVariants" &&
+                it.parameterCount == 2
             }
 
-            val callback = object : kotlin.jvm.functions.Function1<Any, Unit>, org.gradle.api.Action<Any> {
-                override fun invoke(variant: Any) {
-                    execute(variant)
-                }
-
+            val callback = object : org.gradle.api.Action<Any> {
                 override fun execute(variant: Any) {
                     try {
                         val variantName = variant.javaClass.getMethod("getName").invoke(variant) as String
