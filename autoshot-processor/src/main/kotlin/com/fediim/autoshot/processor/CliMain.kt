@@ -41,18 +41,22 @@ object CliMain {
                     sources = args.getOrNull(i + 1) ?: ""
                     i += 2
                 }
+
                 "--output" -> {
                     output = args.getOrNull(i + 1) ?: ""
                     i += 2
                 }
+
                 "--custom-annotations" -> {
                     customAnnotationsArg = args.getOrNull(i + 1) ?: ""
                     i += 2
                 }
+
                 "--visibility-report" -> {
                     visibilityReportPath = args.getOrNull(i + 1) ?: ""
                     i += 2
                 }
+
                 else -> {
                     i++
                 }
@@ -88,7 +92,7 @@ object CliMain {
             "Preview",
             "PreviewLightDark",
             "androidx.compose.ui.tooling.preview.Preview",
-            "androidx.compose.ui.tooling.preview.PreviewLightDark"
+            "androidx.compose.ui.tooling.preview.PreviewLightDark",
         )
 
         if (customAnnotationsArg.isNotEmpty()) {
@@ -143,7 +147,7 @@ object CliMain {
                         sourceFileName = file.name.removeSuffix(".kt"),
                         imports = parser.imports,
                         previewFunctions = validPreviews,
-                        outputDir = outputDir
+                        outputDir = outputDir,
                     )
                 }
             } catch (e: Exception) {
@@ -156,7 +160,7 @@ object CliMain {
             try {
                 val reportFile = File(visibilityReportPath)
                 reportFile.parentFile?.mkdirs()
-                
+
                 val uniqueViolations = if (reportFile.exists()) {
                     reportFile.readLines().filter { it.isNotBlank() }.toMutableSet()
                 } else {

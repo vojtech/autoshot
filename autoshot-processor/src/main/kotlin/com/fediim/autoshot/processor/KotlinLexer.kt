@@ -17,7 +17,17 @@
 package com.fediim.autoshot.processor
 
 enum class TokenType {
-    PACKAGE, IMPORT, ANNOTATION, FUN, IDENTIFIER, MODIFIER, LPAREN, RPAREN, LBRACE, RBRACE, OTHER
+    PACKAGE,
+    IMPORT,
+    ANNOTATION,
+    FUN,
+    IDENTIFIER,
+    MODIFIER,
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
+    OTHER,
 }
 
 data class Token(val type: TokenType, val text: String)
@@ -33,6 +43,7 @@ class KotlinLexer(private val content: String) {
                 char.isWhitespace() -> {
                     index++
                 }
+
                 char == '/' && peek() == '/' -> {
                     // Line comment, skip to end of line
                     index += 2
@@ -40,6 +51,7 @@ class KotlinLexer(private val content: String) {
                         index++
                     }
                 }
+
                 char == '/' && peek() == '*' -> {
                     // Block comment, skip to */
                     index += 2
@@ -48,6 +60,7 @@ class KotlinLexer(private val content: String) {
                     }
                     if (index < content.length) index += 2 // skip */
                 }
+
                 char == '"' -> {
                     // String literal
                     val start = index
@@ -69,6 +82,7 @@ class KotlinLexer(private val content: String) {
                     }
                     tokens.add(Token(TokenType.OTHER, content.substring(start, index)))
                 }
+
                 char == '\'' -> {
                     // Char literal
                     val start = index
@@ -80,6 +94,7 @@ class KotlinLexer(private val content: String) {
                     if (index < content.length) index++
                     tokens.add(Token(TokenType.OTHER, content.substring(start, index)))
                 }
+
                 char == '@' -> {
                     // Annotation
                     index++
@@ -101,10 +116,12 @@ class KotlinLexer(private val content: String) {
                                     parenCount++
                                     index++
                                 }
+
                                 ')' -> {
                                     parenCount--
                                     index++
                                 }
+
                                 '"' -> {
                                     if (peek(1) == '"' && peek(2) == '"') {
                                         index += 3
@@ -121,6 +138,7 @@ class KotlinLexer(private val content: String) {
                                         if (index < content.length) index++
                                     }
                                 }
+
                                 else -> {
                                     index++
                                 }
@@ -130,22 +148,27 @@ class KotlinLexer(private val content: String) {
                     }
                     tokens.add(Token(TokenType.ANNOTATION, "@$annotationName$args"))
                 }
+
                 char == '(' -> {
                     tokens.add(Token(TokenType.LPAREN, "("))
                     index++
                 }
+
                 char == ')' -> {
                     tokens.add(Token(TokenType.RPAREN, ")"))
                     index++
                 }
+
                 char == '{' -> {
                     tokens.add(Token(TokenType.LBRACE, "{"))
                     index++
                 }
+
                 char == '}' -> {
                     tokens.add(Token(TokenType.RBRACE, "}"))
                     index++
                 }
+
                 isIdentifierStart(char) -> {
                     val start = index
                     while (index < content.length && (isIdentifierPart(content[index]) || content[index] == '.')) {
@@ -161,6 +184,7 @@ class KotlinLexer(private val content: String) {
                     }
                     tokens.add(Token(type, word))
                 }
+
                 else -> {
                     tokens.add(Token(TokenType.OTHER, char.toString()))
                     index++

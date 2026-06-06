@@ -27,12 +27,12 @@ data class PreviewFunctionInfo(
     val isPrivate: Boolean,
     val isInternal: Boolean,
     val previewAnnotations: List<ParsedAnnotation>,
-    val previewParameter: PreviewParameterInfo?
+    val previewParameter: PreviewParameterInfo?,
 )
 
 data class CustomAnnotationInfo(
     val name: String,
-    val annotations: List<ParsedAnnotation>
+    val annotations: List<ParsedAnnotation>,
 )
 
 class KotlinParser(private val content: String, private val filePath: String) {
@@ -61,6 +61,7 @@ class KotlinParser(private val content: String, private val filePath: String) {
                     }
                     currentAnnotations.clear()
                 }
+
                 TokenType.IMPORT -> {
                     i++
                     val imp = nextToken()
@@ -74,6 +75,7 @@ class KotlinParser(private val content: String, private val filePath: String) {
                     }
                     currentAnnotations.clear()
                 }
+
                 TokenType.ANNOTATION -> {
                     val annotationText = token.text
                     val name = annotationText.substringBefore('(').removePrefix("@")
@@ -81,6 +83,7 @@ class KotlinParser(private val content: String, private val filePath: String) {
                     currentAnnotations.add(ParsedAnnotation(name, args, annotationText))
                     i++
                 }
+
                 TokenType.IDENTIFIER -> {
                     // Check for annotation class declaration: "annotation" "class" <Name>
                     if (token.text == "annotation" && peekToken(1)?.text == "class") {
@@ -103,6 +106,7 @@ class KotlinParser(private val content: String, private val filePath: String) {
                         i++
                     }
                 }
+
                 TokenType.FUN -> {
                     i++
                     val nameToken = nextToken()
@@ -132,15 +136,18 @@ class KotlinParser(private val content: String, private val filePath: String) {
                                 var parenCount = 1
                                 while (i < tokens.size && parenCount > 0) {
                                     val t = tokens[i]
-                                    if (t.type == TokenType.LPAREN) parenCount++
-                                    else if (t.type == TokenType.RPAREN) parenCount--
-                                    
+                                    if (t.type == TokenType.LPAREN) {
+                                        parenCount++
+                                    } else if (t.type == TokenType.RPAREN) {
+                                        parenCount--
+                                    }
+
                                     if (parenCount > 0) {
                                         paramTokens.add(t)
                                     }
                                     i++
                                 }
-                                
+
                                 var p = 0
                                 while (p < paramTokens.size) {
                                     val pt = paramTokens[p]
@@ -178,19 +185,22 @@ class KotlinParser(private val content: String, private val filePath: String) {
                                     p++
                                 }
                             }
-                            previewFunctions.add(PreviewFunctionInfo(
-                                name = functionName,
-                                packageName = packageName,
-                                filePath = filePath,
-                                isPrivate = isPrivate,
-                                isInternal = isInternal,
-                                previewAnnotations = previewAnnos,
-                                previewParameter = previewParameter
-                            ))
+                            previewFunctions.add(
+                                PreviewFunctionInfo(
+                                    name = functionName,
+                                    packageName = packageName,
+                                    filePath = filePath,
+                                    isPrivate = isPrivate,
+                                    isInternal = isInternal,
+                                    previewAnnotations = previewAnnos,
+                                    previewParameter = previewParameter,
+                                ),
+                            )
                         }
                     }
                     currentAnnotations.clear()
                 }
+
                 else -> {
                     if (token.type != TokenType.MODIFIER && token.type != TokenType.OTHER) {
                         currentAnnotations.clear()
@@ -206,21 +216,22 @@ class KotlinParser(private val content: String, private val filePath: String) {
         if (knownPreviewAnnotations.contains(name)) return true
         val resolved = resolveImport(name, knownPreviewAnnotations)
         return resolved == "androidx.compose.ui.tooling.preview.Preview" ||
-               resolved == "androidx.compose.ui.tooling.preview.PreviewLightDark" ||
-               knownPreviewAnnotations.contains(resolved)
+            resolved == "androidx.compose.ui.tooling.preview.PreviewLightDark" ||
+            knownPreviewAnnotations.contains(resolved)
     }
 
     private fun resolveImport(name: String, knownPreviewAnnotations: Set<String>): String {
         val exactMatch = imports.find { it.endsWith(".$name") }
         if (exactMatch != null) return exactMatch
-        
+
         val wildcardMatches = imports.filter { it.endsWith(".*") }
         for (wildcardMatch in wildcardMatches) {
             val base = wildcardMatch.removeSuffix("*")
             val possibleQName = base + name
             if (possibleQName == "androidx.compose.ui.tooling.preview.Preview" ||
                 possibleQName == "androidx.compose.ui.tooling.preview.PreviewLightDark" ||
-                knownPreviewAnnotations.contains(possibleQName)) {
+                knownPreviewAnnotations.contains(possibleQName)
+            ) {
                 return possibleQName
             }
         }

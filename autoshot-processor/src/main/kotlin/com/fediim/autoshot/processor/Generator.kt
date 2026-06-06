@@ -24,13 +24,13 @@ object Generator {
         sourceFileName: String,
         imports: List<String>,
         previewFunctions: List<PreviewFunctionInfo>,
-        outputDir: File
+        outputDir: File,
     ) {
         val testFileName = "${sourceFileName}ScreenshotTest"
         val packagePath = packageName.replace('.', '/')
         val outputSubDir = if (packagePath.isNotEmpty()) File(outputDir, packagePath) else outputDir
         outputSubDir.mkdirs()
-        
+
         val outputFile = File(outputSubDir, "$testFileName.kt")
 
         val content = buildString {
@@ -46,39 +46,41 @@ object Generator {
             val allImports = imports.toMutableSet()
             allImports.add("com.android.tools.screenshot.PreviewTest")
             allImports.add("androidx.compose.runtime.Composable")
-            
+
             allImports.sorted().forEach { imp ->
                 appendLine("import $imp")
             }
             appendLine()
 
+            appendLine("class $testFileName {")
             previewFunctions.forEach { func ->
-                appendLine("@PreviewTest")
-                appendLine("@Composable")
+                appendLine("    @PreviewTest")
+                appendLine("    @Composable")
                 func.previewAnnotations.forEach { ann ->
-                    appendLine(ann.fullText)
+                    appendLine("    ${ann.fullText}")
                 }
-                
-                val modifier = if (func.isInternal) "internal " else ""
-                append("${modifier}fun ${func.name}ScreenshotTest")
-                
+
+                val testFunctionName = "test${func.name.replaceFirstChar { it.uppercase() }}"
+                append("    fun $testFunctionName")
+
                 if (func.previewParameter != null) {
                     appendLine("(")
-                    appendLine("    ${func.previewParameter.annotationText} ${func.previewParameter.name}: ${func.previewParameter.type}")
-                    appendLine(")")
+                    appendLine("        ${func.previewParameter.annotationText} ${func.previewParameter.name}: ${func.previewParameter.type}")
+                    appendLine("    )")
                 } else {
                     appendLine("()")
                 }
-                
-                appendLine("{")
+
+                appendLine("    {")
                 if (func.previewParameter != null) {
-                    appendLine("    ${func.name}(${func.previewParameter.name})")
+                    appendLine("        ${func.name}(${func.previewParameter.name})")
                 } else {
-                    appendLine("    ${func.name}()")
+                    appendLine("        ${func.name}()")
                 }
-                appendLine("}")
+                appendLine("    }")
                 appendLine()
             }
+            appendLine("}")
         }
 
         outputFile.writeText(content)

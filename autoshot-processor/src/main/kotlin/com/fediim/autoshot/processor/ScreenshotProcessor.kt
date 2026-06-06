@@ -36,6 +36,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import java.io.File
@@ -195,9 +196,15 @@ class ScreenshotProcessor(
 
         val fileSpecBuilder = FileSpec.builder(packageName, testFileName)
 
-        functions.forEach { (func, previewAnnos) ->
-            fileSpecBuilder.addFunction(addFunction(func, previewAnnos))
-        }
+        val classSpec = TypeSpec.classBuilder(testFileName)
+            .apply {
+                functions.forEach { (func, previewAnnos) ->
+                    addFunction(addFunction(func, previewAnnos))
+                }
+            }
+            .build()
+
+        fileSpecBuilder.addType(classSpec)
 
         val fileSpec = fileSpecBuilder.build()
         generatedFiles.add(qualifiedFileName)
@@ -231,13 +238,9 @@ class ScreenshotProcessor(
         previewAnnotations: List<KSAnnotation>,
     ): FunSpec {
         val functionName = function.simpleName.asString()
-        val testFunctionName = "${functionName}ScreenshotTest"
+        val testFunctionName = "test${functionName.replaceFirstChar { it.uppercase() }}"
 
         val funSpecBuilder = FunSpec.builder(testFunctionName)
-
-        if (function.isInternal()) {
-            funSpecBuilder.addModifiers(KModifier.INTERNAL)
-        }
 
         funSpecBuilder.addAnnotation(ClassName(AnnotationImports.PREVIEW_TEST, AnnotationNames.PREVIEW_TEST))
         funSpecBuilder.addAnnotation(ClassName(AnnotationImports.COMPOSABLE, AnnotationNames.COMPOSABLE))
