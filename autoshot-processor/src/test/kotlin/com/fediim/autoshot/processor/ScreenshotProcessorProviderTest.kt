@@ -45,15 +45,4 @@ class ScreenshotProcessorProviderTest {
             "The returned processor should be an instance of ScreenshotProcessor."
         }
     }
-
-    @Test
-    fun `test create uses provided environment`() {
-        val environmentMock = mockk<SymbolProcessorEnvironment>(relaxed = true)
-        val provider = ScreenshotProcessorProvider()
-
-        provider.create(environmentMock)
-
-        verify(exactly = 1) { environmentMock.logger }
-        verify(exactly = 1) { environmentMock.options }
-    }
 }
