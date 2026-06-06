@@ -21,6 +21,14 @@ import java.io.File
 object CliMain {
     @JvmStatic
     fun main(args: Array<String>) {
+        val exitCode = runCli(args)
+        if (exitCode != 0) {
+            System.exit(exitCode)
+        }
+    }
+
+    @JvmStatic
+    fun runCli(args: Array<String>): Int {
         var sources = ""
         var output = ""
         var customAnnotationsArg = ""
@@ -53,7 +61,7 @@ object CliMain {
 
         if (sources.isEmpty() || output.isEmpty()) {
             System.err.println("Usage: CliMain --sources <comma-separated-paths> --output <output-dir> [--custom-annotations <comma-separated>] [--visibility-report <report-path>]")
-            System.exit(1)
+            return 1
         }
 
         val sourcePaths = sources.split(',').map { it.trim() }.filter { it.isNotEmpty() }
@@ -164,6 +172,7 @@ object CliMain {
                 System.err.println("Warning: Failed to write visibility report: ${e.message}")
             }
         }
+        return 0
     }
 
     private fun findKtFiles(path: String): List<File> {
