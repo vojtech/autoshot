@@ -100,7 +100,33 @@ plugins {
 }
 ```
 
-### 6. Annotate Your Composables
+### 6. Choose Configuration Mode (KSP vs Standalone)
+
+AutoShot supports two modes of execution:
+1. **KSP Mode** (Default, compiler-integrated): Generates screenshot test wrappers during the KSP compilation phase. It compiles them and copies them to your `src/screenshotTest/kotlin` directory.
+2. **Standalone Mode** (Independent task): Runs as an independent Gradle task via a fast JVM source tokenizer and parser. This mode does not require KSP or compile-time AGP dependencies, making it perfect for rapid execution and pure Kotlin/JVM or Kotlin Multiplatform modules.
+
+You can configure the mode using the `autoshot` extension block:
+
+```kotlin
+autoshot {
+    // Enable or disable KSP. Set to false to use Standalone mode.
+    // Default is true if KSP is detected on the classpath.
+    useKsp.set(false)
+
+    // Optional: Fully qualified class names of custom preview annotations to scan for.
+    customAnnotations.set(listOf("com.fediim.feature.CustomAnnotation"))
+}
+```
+
+#### Standalone Mode Tasks
+When `useKsp` is set to `false`, AutoShot registers generation tasks for your build variants:
+```bash
+./gradlew generateDebugScreenshotWrappers
+```
+These tasks run a fast CLI runner that parses your Kotlin source files and writes the generated screenshot tests into the `build/generated/autoshot/<variant>/kotlin` directory, automatically registering it as a source set for screenshot compilation.
+
+### 7. Annotate Your Composables
 
 The processor looks for any function annotated with `@Preview` or any annotation that is itself annotated with `@Preview` (meta-annotations like `@PreviewLightDark`).
 
@@ -137,7 +163,7 @@ private fun MyComposablePreviewPrivate() {
 }
 ```
 
-### 7. Run Screenshot Tests
+### 8. Run Screenshot Tests
 
 The plugin registers a task to run the tests. Since this setup uses the Android Screenshot Testing library, you typically run:
 
@@ -224,4 +250,5 @@ Screenshot tests require `@Preview` functions to be accessible (at least `intern
 
 The processor is configured to exclude files in `/generated/`, `/test/`, `/androidTest/`, and `/screenshotTest/` to prevent infinite recursion.
 
-The convention plugin automatically copies the generated KSP files to `src/screenshotTest/kotlin` so they are picked up by the screenshot testing source set.
+*   **KSP Mode**: The convention plugin automatically copies the generated KSP files from the build folder to `src/screenshotTest/kotlin` so they are picked up by the screenshot testing source set.
+*   **Standalone Mode**: The convention plugin registers the task-generated source folder `build/generated/autoshot` directly as a Kotlin source directory for screenshot compilation, keeping your source tree completely clean.
