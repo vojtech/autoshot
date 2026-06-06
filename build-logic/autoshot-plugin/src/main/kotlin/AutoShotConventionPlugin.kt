@@ -71,9 +71,17 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 configureVariantsReflectively(target, extension, autoshotProcessorConf)
             }
 
+            configureScreenshotDependencies(isKspAvailable, disableKspApp, autoshotProcessorConf)
+
             afterEvaluate {
                 val useKsp = extension.useKsp.getOrElse(true)
-                configureScreenshotDependencies(useKsp, autoshotProcessorConf)
+                if (!useKsp) {
+                    tasks.configureEach {
+                        if (name.startsWith("ksp")) {
+                            enabled = false
+                        }
+                    }
+                }
             }
 
             tasks.register<UpdatePreviewVisibilityTask>("updatePreviewVisibility") {
@@ -88,6 +96,7 @@ class AutoShotConventionPlugin : Plugin<Project> {
         val androidExt = project.extensions.findByName("android") ?: return
         try {
             val getExperimentalPropertiesMethod = androidExt.javaClass.getMethod("getExperimentalProperties")
+
             @Suppress("UNCHECKED_CAST")
             val experimentalProperties = getExperimentalPropertiesMethod.invoke(androidExt) as? MutableMap<String, Any>
             experimentalProperties?.put("android.experimental.enableScreenshotTest", true)
@@ -99,7 +108,7 @@ class AutoShotConventionPlugin : Plugin<Project> {
     private fun configureVariantsReflectively(
         project: Project,
         extension: AutoShotExtension,
-        autoshotProcessorConf: Configuration
+        autoshotProcessorConf: Configuration,
     ) {
         val androidComponents = project.extensions.findByName("androidComponents") ?: return
         try {
@@ -110,11 +119,11 @@ class AutoShotConventionPlugin : Plugin<Project> {
 
             val onVariantsMethod = androidComponents.javaClass.methods.firstOrNull {
                 it.name == "onVariants" &&
-                it.parameterCount == 2 &&
-                it.parameterTypes[1].name == "org.gradle.api.Action"
+                    it.parameterCount == 2 &&
+                    it.parameterTypes[1].name == "org.gradle.api.Action"
             } ?: androidComponents.javaClass.methods.first {
                 it.name == "onVariants" &&
-                it.parameterCount == 2
+                    it.parameterCount == 2
             }
 
             val callback = object : org.gradle.api.Action<Any> {
@@ -139,7 +148,7 @@ class AutoShotConventionPlugin : Plugin<Project> {
         variantName: String,
         variant: Any,
         extension: AutoShotExtension,
-        autoshotProcessorConf: Configuration
+        autoshotProcessorConf: Configuration,
     ) {
         val capitalizedVariantName = variantName.replaceFirstChar {
             if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
@@ -160,6 +169,9 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
                     dependsOn(copyTask)
                 }
+                if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
+                    dependsOn(copyTask)
+                }
             }
         } else {
             val generateTask = project.tasks.register<AutoShotGenerateTask>("generate${capitalizedVariantName}ScreenshotWrappers") {
@@ -168,8 +180,16 @@ class AutoShotConventionPlugin : Plugin<Project> {
 
                 try {
                     val sourcesObj = variant.javaClass.getMethod("getSources").invoke(variant)
-                    val kotlinMethod = try { sourcesObj.javaClass.getMethod("getKotlin") } catch (e: Exception) { null }
-                    val javaMethod = try { sourcesObj.javaClass.getMethod("getJava") } catch (e: Exception) { null }
+                    val kotlinMethod = try {
+                        sourcesObj.javaClass.getMethod("getKotlin")
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val javaMethod = try {
+                        sourcesObj.javaClass.getMethod("getJava")
+                    } catch (e: Exception) {
+                        null
+                    }
                     val sourceDirectoriesObj = kotlinMethod?.invoke(sourcesObj) ?: javaMethod?.invoke(sourcesObj)
                     if (sourceDirectoriesObj != null) {
                         val allMethod = sourceDirectoriesObj.javaClass.getMethod("getAll")
@@ -188,12 +208,18 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 processorClasspath.from(autoshotProcessorConf)
             }
 
+            val copyTask = project.tasks.register<Copy>("copy${capitalizedVariantName}ScreenshotTests") {
+                from(generateTask.flatMap { it.outputDir })
+                into("src/screenshotTest/kotlin")
+                include("**/*ScreenshotTest.kt")
+            }
+
             project.tasks.configureEach {
                 if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
-                    dependsOn(generateTask)
-                    if (this is KotlinCompile) {
-                        source(generateTask.flatMap { it.outputDir })
-                    }
+                    dependsOn(copyTask)
+                }
+                if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
+                    dependsOn(copyTask)
                 }
             }
         }
@@ -201,8 +227,9 @@ class AutoShotConventionPlugin : Plugin<Project> {
 }
 
 internal fun Project.configureScreenshotDependencies(
-    useKsp: Boolean,
-    autoshotProcessorConf: Configuration
+    isKspAvailable: Boolean,
+    disableKspApp: Boolean,
+    autoshotProcessorConf: Configuration,
 ) {
     val bomDefault = "androidx.compose:compose-bom:2025.12.01"
     val defaultProcessor = "com.fediim:autoshot-processor:1.0.0-alpha01"
@@ -223,11 +250,10 @@ internal fun Project.configureScreenshotDependencies(
         add("debugImplementation", "androidx.compose.ui:ui-tooling")
         add("screenshotTestImplementation", "androidx.compose.ui:ui-tooling")
 
-        if (useKsp) {
+        add(autoshotProcessorConf.name, processorLib)
+        if (isKspAvailable && !disableKspApp) {
             add("ksp", processorLib)
             add("implementation", processorLib)
-        } else {
-            add(autoshotProcessorConf.name, processorLib)
         }
     }
 }

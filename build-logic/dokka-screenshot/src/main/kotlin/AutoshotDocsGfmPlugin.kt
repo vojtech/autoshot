@@ -26,7 +26,6 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 
-
 class AutoshotDocsGfmPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
@@ -54,7 +53,6 @@ abstract class GenerateScreenshotMarkdownTask : DefaultTask() {
 
     @get:Input
     abstract val moduleName: Property<String>
-
 
     @TaskAction
     fun generate() {
@@ -108,13 +106,13 @@ abstract class GenerateScreenshotMarkdownTask : DefaultTask() {
 
         componentFiles.keys.forEach {
             if (it != "screenshot-index") {
-                root.append("[${it}](${it.lowercase()}.md)\n\n")
+                root.append("[$it](${it.lowercase()}.md)\n\n")
             }
         }
 
         componentFiles.forEach { (key, value) ->
             val indexFile = File(outDir, "${key.lowercase()}.md")
-            if(!indexFile.exists()) {
+            if (!indexFile.exists()) {
                 indexFile.createNewFile()
             }
             indexFile.writeText(value.toString())

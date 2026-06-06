@@ -26,6 +26,6 @@ android {
 }
 
 autoshot {
-    useKsp.set(false)
+    useKsp.set(true)
     customAnnotations.set(listOf("com.fediim.feature.CustomAnnotation"))
 }
