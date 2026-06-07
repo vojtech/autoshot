@@ -86,3 +86,16 @@ tasks.register<Jar>("fatJar") {
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
     })
 }
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/vojtech/autoshot")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: System.getProperty("gpr.user")
+                password = System.getenv("GITHUB_TOKEN") ?: System.getProperty("gpr.key")
+            }
+        }
+    }
+}
