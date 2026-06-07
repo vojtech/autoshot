@@ -30,14 +30,38 @@ make publish-all
 ```
 
 ### 2. Configure Plugin Repositories (`settings.gradle.kts`)
-Add `mavenLocal()` to resolve the plugin:
+To consume the published artifacts, configure the GitHub Packages Maven repository in your `settings.gradle.kts`. Note that GitHub Packages requires authentication (username + Personal Access Token) to resolve dependencies even for public packages:
+
 ```kotlin
 pluginManagement {
     repositories {
-        mavenLocal()
+        maven {
+            url = uri("https://maven.pkg.github.com/vojtech/autoshot")
+            credentials {
+                username = "your-github-username"
+                password = "your-github-personal-access-token" // PAT with read:packages scope
+            }
+        }
+        mavenLocal() // For local development
         google()
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://maven.pkg.github.com/vojtech/autoshot")
+            credentials {
+                username = "your-github-username"
+                password = "your-github-personal-access-token"
+            }
+        }
+        mavenLocal() // For local development
     }
 }
 ```
