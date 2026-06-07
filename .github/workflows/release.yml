@@ -29,7 +29,7 @@ jobs:
         run: ./gradlew --init-script gradle/init.gradle.kts spotlessCheck
 
       - name: Publish to Maven Local and Build Plugin
-        run: ./gradlew publishToMavenLocal :build-logic:autoshot-plugin:assemble
+        run: ./gradlew publishToMavenLocal :build-logic:autoshot-plugin:assemble :autoshot-processor:fatJar
 
       - name: Run Build and Tests
         run: ./gradlew check
@@ -49,3 +49,47 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Formula
+        run: |
+          # Get version from release tag (remove 'v' prefix if present)
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}"
+          
+          # Find the built standalone fat JAR
+          JAR_PATH=$(ls autoshot-processor/build/libs/*-standalone.jar)
+          
+          # Compute SHA256 of the JAR
+          SHA256=$(sha256sum "$JAR_PATH" | awk '{print $1}')
+          
+          echo "Version: $VERSION"
+          echo "SHA256: $SHA256"
+          
+          # Run Python inline script to update the formula file
+          python3 -c '
+          import sys, re
+          version = sys.argv[1]
+          sha256 = sys.argv[2]
+          with open("Formula/autoshot.rb", "r") as f:
+              content = f.read()
+          content = re.sub(
+              r"url \"https://github\.com/vojtech/screenshot-test-automator/releases/download/v[^\"\s]+/autoshot-processor-[^\"\s]+-standalone\.jar\"",
+              f"url \"https://github.com/vojtech/screenshot-test-automator/releases/download/v{version}/autoshot-processor-{version}-standalone.jar\"",
+              content
+          )
+          content = re.sub(
+              r"sha256 \"[0-9a-fA-F]{64}\"",
+              f"sha256 \"{sha256}\"",
+              content
+          )
+          with open("Formula/autoshot.rb", "w") as f:
+              f.write(content)
+          ' "$VERSION" "$SHA256"
+          
+          # Configure Git and push back to main branch
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/autoshot.rb
+          git commit -m "Update Homebrew formula to v$VERSION [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+
