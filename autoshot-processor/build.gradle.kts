@@ -74,3 +74,15 @@ mavenPublishing {
         }
     }
 }
+
+tasks.register<Jar>("fatJar") {
+    archiveClassifier.set("standalone")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes["Main-Class"] = "com.fediim.autoshot.processor.CliMain"
+    }
+    from(sourceSets.main.get().output)
+    from({
+        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+    })
+}
