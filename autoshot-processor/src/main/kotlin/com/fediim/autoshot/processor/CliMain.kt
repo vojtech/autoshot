@@ -33,6 +33,7 @@ object CliMain {
         var output = ""
         var customAnnotationsArg = ""
         var visibilityReportPath = ""
+        var metadataPath = ""
 
         var i = 0
         while (i < args.size) {
@@ -57,19 +58,56 @@ object CliMain {
                     i += 2
                 }
 
+                "--metadata" -> {
+                    metadataPath = args.getOrNull(i + 1) ?: ""
+                    i += 2
+                }
+
                 else -> {
                     i++
                 }
             }
         }
 
-        if (sources.isEmpty() || output.isEmpty()) {
-            System.err.println("Usage: CliMain --sources <comma-separated-paths> --output <output-dir> [--custom-annotations <comma-separated>] [--visibility-report <report-path>]")
+        if ((sources.isEmpty() && metadataPath.isEmpty()) || output.isEmpty()) {
+            System.err.println("Usage: CliMain [--sources <comma-separated-paths> | --metadata <metadata-file>] --output <output-dir> [--custom-annotations <comma-separated>] [--visibility-report <report-path>]")
             return 1
         }
 
-        val sourcePaths = sources.split(',').map { it.trim() }.filter { it.isNotEmpty() }
         val outputDir = File(output)
+
+        if (metadataPath.isNotEmpty()) {
+            val file = File(metadataPath)
+            if (!file.exists()) {
+                System.err.println("Error: Metadata file does not exist: $metadataPath")
+                return 1
+            }
+            val parsedFuncs = parseMetadataFile(file)
+            val grouped = parsedFuncs.groupBy {
+                File(it.info.filePath).name.removeSuffix(".kt")
+            }
+
+            for ((sourceFileName, funcs) in grouped) {
+                val pkgName = funcs.first().info.packageName
+                val allImports = mutableSetOf<String>()
+                funcs.forEach {
+                    allImports.addAll(it.imports)
+                    allImports.add("$pkgName.${it.info.name}")
+                }
+                val previewFuncInfos = funcs.map { it.info }
+
+                Generator.generate(
+                    packageName = pkgName,
+                    sourceFileName = sourceFileName,
+                    imports = allImports.toList(),
+                    previewFunctions = previewFuncInfos,
+                    outputDir = outputDir,
+                )
+            }
+            return 0
+        }
+
+        val sourcePaths = sources.split(',').map { it.trim() }.filter { it.isNotEmpty() }
 
         val excluded = listOf("/generated/", "/test/", "/androidTest/", "/screenshotTest/")
         val ktFiles = sourcePaths.flatMap { findKtFiles(it) }
@@ -179,6 +217,91 @@ object CliMain {
         return 0
     }
 
+    private fun parseMetadataFile(metadataFile: File): List<ParsedMetadataFunction> {
+        val result = mutableListOf<ParsedMetadataFunction>()
+        if (!metadataFile.exists()) return result
+
+        val lines = metadataFile.readLines()
+        var currentName = ""
+        var currentPackage = ""
+        var currentFile = ""
+        val currentAnnos = mutableListOf<ParsedAnnotation>()
+        var currentParam: PreviewParameterInfo? = null
+        val currentImports = mutableListOf<String>()
+
+        for (rawLine in lines) {
+            val line = rawLine.trim()
+            if (line.isEmpty()) continue
+            when {
+                line.startsWith("FUNC:") -> {
+                    currentName = line.removePrefix("FUNC:")
+                    currentAnnos.clear()
+                    currentParam = null
+                    currentImports.clear()
+                }
+
+                line.startsWith("PACKAGE:") -> {
+                    currentPackage = line.removePrefix("PACKAGE:")
+                }
+
+                line.startsWith("FILE:") -> {
+                    currentFile = line.removePrefix("FILE:")
+                }
+
+                line.startsWith("IMPORT:") -> {
+                    val imp = line.removePrefix("IMPORT:")
+                    if (imp.isNotEmpty()) {
+                        currentImports.add(imp)
+                    }
+                }
+
+                line.startsWith("ANNO:") -> {
+                    val parts = line.removePrefix("ANNO:").split("|", limit = 2)
+                    if (parts.size == 2) {
+                        val qName = parts[0]
+                        val fullText = parts[1]
+                        val shortName = qName.substringAfterLast('.')
+                        val body = if (fullText.contains('(')) {
+                            fullText.substringAfter('(').substringBeforeLast(')')
+                        } else {
+                            ""
+                        }
+                        currentAnnos.add(ParsedAnnotation(shortName, body, fullText))
+                    }
+                }
+
+                line.startsWith("PARAM:") -> {
+                    val parts = line.removePrefix("PARAM:").split("|", limit = 3)
+                    if (parts.size == 3) {
+                        val pName = parts[0]
+                        val pTypeQName = parts[1]
+                        val pAnnoText = parts[2]
+                        val pTypeShortName = pTypeQName.substringAfterLast('.')
+                        currentParam = PreviewParameterInfo(pName, pTypeShortName, pAnnoText)
+                    }
+                }
+
+                line == "ENDFUNC" -> {
+                    result.add(
+                        ParsedMetadataFunction(
+                            info = PreviewFunctionInfo(
+                                name = currentName,
+                                packageName = currentPackage,
+                                filePath = currentFile,
+                                isPrivate = false,
+                                isInternal = false,
+                                previewAnnotations = currentAnnos.toList(),
+                                previewParameter = currentParam,
+                            ),
+                            imports = currentImports.toList(),
+                        ),
+                    )
+                }
+            }
+        }
+        return result
+    }
+
     private fun findKtFiles(path: String): List<File> {
         val file = File(path)
         if (!file.exists()) return emptyList()
@@ -193,4 +316,9 @@ object CliMain {
         }
         return result
     }
+
+    private data class ParsedMetadataFunction(
+        val info: PreviewFunctionInfo,
+        val imports: List<String>,
+    )
 }

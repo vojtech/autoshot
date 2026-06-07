@@ -74,7 +74,12 @@ class AutoShotConventionPlugin : Plugin<Project> {
             configureScreenshotDependencies(isKspAvailable, disableKspApp, autoshotProcessorConf)
 
             afterEvaluate {
-                val useKsp = extension.useKsp.getOrElse(true)
+                val disableKsp = providers.gradleProperty("autoshot.disableKsp")
+                    .map { it.toBoolean() }
+                    .getOrElse(false)
+                val useKsp = extension.useKsp.getOrElse(true) &&
+                    pluginManager.hasPlugin("com.google.devtools.ksp") &&
+                    !disableKsp
                 if (!useKsp) {
                     tasks.configureEach {
                         if (name.startsWith("ksp")) {
@@ -154,30 +159,26 @@ class AutoShotConventionPlugin : Plugin<Project> {
             if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
         }
 
-        val useKsp = extension.useKsp.getOrElse(true)
+        val generateTask = project.tasks.register<AutoShotGenerateTask>("generate${capitalizedVariantName}ScreenshotWrappers") {
+            group = "autoshot"
+            description = "Generates screenshot test wrappers for $variantName."
 
-        if (useKsp) {
-            val copyTask = project.tasks.register<Copy>("copy${capitalizedVariantName}ScreenshotTests") {
-                from(project.layout.buildDirectory.dir("generated/ksp/$variantName/kotlin"))
-                into("src/screenshotTest/kotlin")
-                include("**/*ScreenshotTest.kt")
-            }
-            project.tasks.configureEach {
-                if (name == "ksp${capitalizedVariantName}Kotlin") {
-                    finalizedBy(copyTask)
-                }
-                if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
-                    dependsOn(copyTask)
-                }
-                if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
-                    dependsOn(copyTask)
-                }
-            }
-        } else {
-            val generateTask = project.tasks.register<AutoShotGenerateTask>("generate${capitalizedVariantName}ScreenshotWrappers") {
-                group = "autoshot"
-                description = "Generates screenshot test wrappers in Standalone mode for $variantName."
+            outputDir.set(project.layout.buildDirectory.dir("generated/autoshot/$variantName/kotlin"))
+            customAnnotations.set(extension.customAnnotations)
+            visibilityReport.set(project.layout.buildDirectory.file("generated/autoshot/visibility_report.txt"))
+            processorClasspath.from(autoshotProcessorConf)
 
+            val disableKsp = project.providers.gradleProperty("autoshot.disableKsp")
+                .map { it.toBoolean() }
+                .getOrElse(false)
+            val useKsp = extension.useKsp.getOrElse(true) &&
+                project.pluginManager.hasPlugin("com.google.devtools.ksp") &&
+                !disableKsp
+
+            if (useKsp) {
+                metadataFile.set(project.layout.buildDirectory.file("generated/ksp/$variantName/resources/autoshot_metadata.txt"))
+                dependsOn("ksp${capitalizedVariantName}Kotlin")
+            } else {
                 try {
                     val sourcesObj = variant.javaClass.getMethod("getSources").invoke(variant)
                     val kotlinMethod = try {
@@ -201,26 +202,21 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 } catch (e: Exception) {
                     sources.from(project.files("src/$variantName/java", "src/$variantName/kotlin", "src/main/java", "src/main/kotlin"))
                 }
-
-                outputDir.set(project.layout.buildDirectory.dir("generated/autoshot/$variantName/kotlin"))
-                customAnnotations.set(extension.customAnnotations)
-                visibilityReport.set(project.layout.buildDirectory.file("generated/autoshot/visibility_report.txt"))
-                processorClasspath.from(autoshotProcessorConf)
             }
+        }
 
-            val copyTask = project.tasks.register<Copy>("copy${capitalizedVariantName}ScreenshotTests") {
-                from(generateTask.flatMap { it.outputDir })
-                into("src/screenshotTest/kotlin")
-                include("**/*ScreenshotTest.kt")
+        val copyTask = project.tasks.register<Copy>("copy${capitalizedVariantName}ScreenshotTests") {
+            from(generateTask.flatMap { it.outputDir })
+            into("src/screenshotTest/kotlin")
+            include("**/*ScreenshotTest.kt")
+        }
+
+        project.tasks.configureEach {
+            if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
+                dependsOn(copyTask)
             }
-
-            project.tasks.configureEach {
-                if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
-                    dependsOn(copyTask)
-                }
-                if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
-                    dependsOn(copyTask)
-                }
+            if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
+                dependsOn(copyTask)
             }
         }
     }
@@ -253,7 +249,6 @@ internal fun Project.configureScreenshotDependencies(
         add(autoshotProcessorConf.name, processorLib)
         if (isKspAvailable && !disableKspApp) {
             add("ksp", processorLib)
-            add("implementation", processorLib)
         }
     }
 }
