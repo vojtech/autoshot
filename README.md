@@ -1,45 +1,40 @@
 # AutoShot
 
-AutoShot provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications. It consists of a KSP processor that generates test entry points from `@Preview` annotations and a set of Gradle convention plugins to simplify the setup.
+AutoShot provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications. It consists of:
+1. A compiler-agnostic **CLI Processor** that generates JUnit test wrappers from Composable previews.
+2. A **KSP Processor** that runs during compilation to discover annotations and output metadata.
+3. A **Gradle Plugin** that wires up the generation and execution tasks seamlessly.
 
-## Components
+---
 
-*   **Processor (`:processor`)**: A KSP processor that scans for `@Preview` (and meta-annotated) Composable functions and generates a corresponding screenshot test file.
-*   **Build Logic (`build-logic`)**: A set of Gradle convention plugins to manage build configuration and apply the screenshot testing infrastructure.
-    *   `com.fediim.plugin.autoshot`: The main plugin that sets up KSP, the processor, and the test execution tasks.
-    *   `com.fediim.android.application`, `com.fediim.android.library`, etc.: Helper plugins for standard Android setups.
+## Dual-Mode Architecture
 
-## Publishing
+AutoShot supports two modes of execution for generating test files:
 
-To use these tools in your project (or locally within this repo), you first need to publish them to your local Maven repository.
+### 1. KSP Mode (Default, compiler-integrated)
+* **How it works**: KSP scans code for `@Preview` annotations during compilation and outputs a lightweight metadata file (`autoshot_metadata.txt`). The `generate<VariantName>ScreenshotWrappers` task then reads this metadata to generate the final screenshot test classes.
+* **Benefit**: 100% accurate symbol resolution (including wildcard imports and custom annotations declared in external libraries).
 
-We provide a `Makefile` to simplify this process.
+### 2. Standalone Mode (Independent scan)
+* **How it works**: Bypasses the KSP compiler plugin entirely. The `generate<VariantName>ScreenshotWrappers` task scans your raw Kotlin source code files directly using a fast built-in tokenizer/parser.
+* **Benefit**: Rapid execution, zero compiler/KSP overhead, and does not require compile-time AGP dependencies.
 
-### Publish Everything
+---
+
+## Getting Started
+
+### 1. Publish to Maven Local
+To use the tools in your project, publish the binaries locally:
 ```bash
 make publish-all
 ```
 
-### Publish Only Plugins
-```bash
-make publish-plugins
-```
-
-### Publish Only Processor
-```bash
-make publish-processor
-```
-
-## Usage
-
-### 1. Configure Plugin Repositories (settings.gradle.kts)
-
-To find the locally published plugin, you must add `mavenLocal()` to your `pluginManagement` block in `settings.gradle.kts`:
-
+### 2. Configure Plugin Repositories (`settings.gradle.kts`)
+Add `mavenLocal()` to resolve the plugin:
 ```kotlin
 pluginManagement {
     repositories {
-        mavenLocal() // Add this!
+        mavenLocal()
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -47,21 +42,17 @@ pluginManagement {
 }
 ```
 
-### 2. Enable Experimental Screenshot Testing (gradle.properties)
-
-The Android Screenshot Testing plugin requires an experimental flag. Add this to your `gradle.properties`:
-
+### 3. Enable Experimental Screenshot Testing (`gradle.properties`)
+Add the Android Screenshot Testing flag:
 ```properties
 android.experimental.enableScreenshotTest=true
 ```
 
-### 3. Configure Version Catalog (libs.versions.toml)
-
-Add the plugin and the screenshot library to your `gradle/libs.versions.toml` file:
-
+### 4. Configure Version Catalog (`libs.versions.toml`)
+Add the compose-screenshot plugin and AutoShot binaries:
 ```toml
 [versions]
-screenshot = "0.0.1-alpha12"
+screenshot = "0.0.1-alpha13"
 
 [libraries]
 screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
@@ -71,184 +62,120 @@ screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot"
 fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
 ```
 
-### 4. Apply the Screenshot Plugin in Root build.gradle.kts
+### 5. Apply the Plugins
 
-In your root `build.gradle.kts`, apply the screenshot plugin (but don't activate it):
-
+**Root `build.gradle.kts`**:
 ```kotlin
 plugins {
     alias(libs.plugins.screenshot) apply false
 }
 ```
 
-### 5. Apply the Plugin in Your Module
-
-In your module's `build.gradle.kts` (e.g., `feature/build.gradle.kts`), apply the screenshot plugin. This plugin automatically handles the KSP setup and dependencies.
-
-**Using Version Catalog (Recommended):**
+**Module-level `build.gradle.kts`**:
 ```kotlin
 plugins {
-    // ... other plugins
     alias(libs.plugins.fediim.autoshot)
 }
-```
 
-**Using ID directly:**
-```kotlin
-plugins {
-    id("com.fediim.plugin.autoshot") version "1.0.0-alpha01"
-}
-```
-
-### 6. Choose Configuration Mode (KSP vs Standalone)
-
-AutoShot supports two modes of execution:
-1. **KSP Mode** (Default, compiler-integrated): Generates screenshot test wrappers during the KSP compilation phase. It compiles them and copies them to your `src/screenshotTest/kotlin` directory.
-2. **Standalone Mode** (Independent task): Runs as an independent Gradle task via a fast JVM source tokenizer and parser. This mode does not require KSP or compile-time AGP dependencies, making it perfect for rapid execution and pure Kotlin/JVM or Kotlin Multiplatform modules.
-
-You can configure the mode using the `autoshot` extension block:
-
-```kotlin
 autoshot {
-    // Enable or disable KSP. Set to false to use Standalone mode.
-    // Default is true if KSP is detected on the classpath.
-    useKsp.set(false)
-
-    // Optional: Fully qualified class names of custom preview annotations to scan for.
-    customAnnotations.set(listOf("com.fediim.feature.CustomAnnotation"))
+    // Set to false to use Standalone mode (default is true if KSP is on classpath)
+    useKsp.set(true)
+    
+    // Optional: Fully qualified class names of custom preview annotations to scan for
+    customAnnotations.set(listOf("com.example.feature.MyCustomPreview"))
 }
 ```
 
-#### Standalone Mode Tasks
-When `useKsp` is set to `false`, AutoShot registers generation tasks for your build variants:
+---
+
+## Gradle Tasks
+
+Regardless of which mode you choose, the plugin registers the following tasks:
+
+### 1. Generate Test Wrappers
 ```bash
 ./gradlew generateDebugScreenshotWrappers
 ```
-These tasks run a fast CLI runner that parses your Kotlin source files and writes the generated screenshot tests into the `build/generated/autoshot/<variant>/kotlin` directory, automatically registering it as a source set for screenshot compilation.
+This task is always responsible for generating the Kotlin wrapper files (under `build/generated/autoshot/<variant>/kotlin`) from either the KSP metadata file (KSP mode) or by parsing sources directly (Standalone mode).
 
-### 7. Annotate Your Composables
+### 2. Copy to Screenshot Source Set
+```bash
+./gradlew copyDebugScreenshotTests
+```
+Copies the generated test wrappers to `src/screenshotTest/kotlin` so the Android screenshot testing runner can compile and run them.
 
-The processor looks for any function annotated with `@Preview` or any annotation that is itself annotated with `@Preview` (meta-annotations like `@PreviewLightDark`).
+### 3. Run Validation Tests
+```bash
+# Update reference baselines (goldens)
+./gradlew :<module>:updateDebugScreenshotTest
 
-**Important:** Preview functions must not be private so they can be accessed from the `screenshotTest` source set. To exclude a Preview from testing, you can either:
-*   Make the preview function `private`
-*   Use the `@IgnorePreview` annotation
+# Validate screenshots against reference baselines
+./gradlew :<module>:validateDebugScreenshotTest
+```
+
+---
+
+## Direct CLI Usage
+
+If you prefer to bypass the Gradle plugin completely, you can execute the CLI runner directly using Java.
+
+### Option A: Standalone Mode (Source Scan)
+```bash
+java -cp autoshot-processor.jar com.fediim.autoshot.processor.CliMain \
+  --sources "src/main/kotlin,src/debug/kotlin" \
+  --output "build/generated/autoshot/debug/kotlin" \
+  --custom-annotations "com.example.MyCustomPreview" \
+  --visibility-report "build/generated/autoshot/visibility_report.txt"
+```
+
+### Option B: Metadata Mode (KSP Metadata Parsing)
+```bash
+java -cp autoshot-processor.jar com.fediim.autoshot.processor.CliMain \
+  --metadata "build/generated/ksp/debug/resources/autoshot_metadata.txt" \
+  --output "build/generated/autoshot/debug/kotlin" \
+  --visibility-report "build/generated/autoshot/visibility_report.txt"
+```
+
+---
+
+## Writing Composables for AutoShot
+
+The generator searches for methods annotated with `@Preview` or any meta-annotation (like `@PreviewLightDark`).
+
+### Requirements:
+* **Visibility**: Preview functions must not be `private` so they can be referenced from the generated test wrappers.
+* **Excluding Previews**: To skip generating a test for a preview, either make the preview function `private` or annotate it with `@IgnorePreview`.
 
 ```kotlin
 @Composable
 @PreviewLightDark
-fun MyComposablePreview() {
-    MyTheme {
-        MyComposable()
-    }
+fun MyWidgetPreview() {
+    MyWidget()
 }
 
-// This preview will be ignored
+// Ignored because it has @IgnorePreview
 @Composable
 @Preview
 @IgnorePreview
-fun MyComposablePreviewIgnored() {
-    MyTheme {
-        MyComposable()
-    }
+fun MyWidgetIgnoredPreview() {
+    MyWidget()
 }
 
-// This preview will also be ignored (private)
+// Ignored because it is private
 @Composable
 @Preview
-private fun MyComposablePreviewPrivate() {
-    MyTheme {
-        MyComposable()
-    }
+private fun MyWidgetPrivatePreview() {
+    MyWidget()
 }
 ```
 
-### 8. Run Screenshot Tests
-
-The plugin registers a task to run the tests. Since this setup uses the Android Screenshot Testing library, you typically run:
-
-```bash
-./gradlew :<module>:screenshotDebug
-```
-*(Note: The exact task name depends on the Android Screenshot plugin integration. The convention plugin currently sets up the infrastructure to copy generated tests to `src/screenshotTest/kotlin`)*.
-
-The generated tests will be located in `src/screenshotTest/kotlin` and will look like:
-
-```kotlin
-// Generated by ScreenshotProcessor
-package com.example.feature
-
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import com.fediim.automator.annotation.PreviewTest
-
-@Preview
-@PreviewTest
-@Composable
-fun MyComposablePreviewScreenshotTest() {
-    MyComposablePreview()
-}
-```
-
-## Multi-Module Project Setup
-
-For multi-module projects, you can choose to apply the plugin individually to each module or centrally via the root build file.
-
-### Option 1: Individual Module Configuration
-
-Apply the `com.fediim.plugin.autoshot` plugin to every Android Library or Application module where you want to generate screenshot tests.
-
-```kotlin
-// feature/home/build.gradle.kts
-plugins {
-    alias(libs.plugins.fediim.autoshot)
-}
-```
-
-### Option 2: Centralized Configuration (subprojects)
-
-You can apply the plugin to all Android modules automatically using the `subprojects` block in your root `build.gradle.kts`. This ensures that any module with the Android plugin applied will also get the AutoShot capabilities.
-
-```kotlin
-// root build.gradle.kts
-plugins {
-    // Ensure the plugin is on the classpath
-    alias(libs.plugins.fediim.autoshot) apply false
-}
-
-subprojects {
-    // Apply AutoShot to all Android Application or Library modules
-    val autoshotPluginId = "com.fediim.plugin.autoshot"
-
-    pluginManager.withPlugin("com.android.application") {
-        apply(plugin = autoshotPluginId)
-    }
-
-    pluginManager.withPlugin("com.android.library") {
-        apply(plugin = autoshotPluginId)
-    }
-}
-```
-
-### Running Tests
-
-You can run tests for a specific module or for the entire project.
-*   Single module: `./gradlew :feature:home:screenshotDebug`
-*   All modules: `./gradlew screenshotDebug` (runs screenshot tests for all modules that have the plugin applied)
+---
 
 ## Utilities
 
 ### Fix Preview Visibility
-
-Screenshot tests require `@Preview` functions to be accessible (at least `internal`). If you have `private` previews that you wish to test, you can use the `updatePreviewVisibility` task to automatically change their visibility to `internal`.
-
+If you have private previews that you want to include in screenshot testing, run:
 ```bash
 ./gradlew updatePreviewVisibility
 ```
-
-## Configuration
-
-The processor is configured to exclude files in `/generated/`, `/test/`, `/androidTest/`, and `/screenshotTest/` to prevent infinite recursion.
-
-*   **KSP Mode**: The convention plugin automatically copies the generated KSP files from the build folder to `src/screenshotTest/kotlin` so they are picked up by the screenshot testing source set.
-*   **Standalone Mode**: The convention plugin registers the task-generated source folder `build/generated/autoshot` directly as a Kotlin source directory for screenshot compilation, keeping your source tree completely clean.
+This task reads the visibility report and automatically changes the visibility of your private preview functions to `internal` in your source files.

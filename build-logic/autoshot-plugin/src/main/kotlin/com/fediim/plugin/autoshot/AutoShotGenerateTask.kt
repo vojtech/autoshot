@@ -24,6 +24,7 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
@@ -46,6 +47,11 @@ abstract class AutoShotGenerateTask @Inject constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sources: ConfigurableFileCollection
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    @get:Optional
+    abstract val metadataFile: RegularFileProperty
+
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
@@ -61,16 +67,22 @@ abstract class AutoShotGenerateTask @Inject constructor(
 
     @TaskAction
     fun generate() {
-        val sourcePaths = sources.files.filter { it.exists() }.map { it.absolutePath }
-        if (sourcePaths.isEmpty()) {
-            return
-        }
-
         val argsList = mutableListOf<String>()
-        argsList.add("--sources")
-        argsList.add(sourcePaths.joinToString(","))
         argsList.add("--output")
         argsList.add(outputDir.get().asFile.absolutePath)
+
+        val metadata = metadataFile.orNull?.asFile
+        if (metadata != null && metadata.exists()) {
+            argsList.add("--metadata")
+            argsList.add(metadata.absolutePath)
+        } else {
+            val sourcePaths = sources.files.filter { it.exists() }.map { it.absolutePath }
+            if (sourcePaths.isEmpty()) {
+                return
+            }
+            argsList.add("--sources")
+            argsList.add(sourcePaths.joinToString(","))
+        }
 
         val annotations = customAnnotations.get()
         if (annotations.isNotEmpty()) {
