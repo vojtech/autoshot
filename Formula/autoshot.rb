@@ -2,7 +2,7 @@ class Autoshot < Formula
   desc "CLI processor for Android screenshot test automation"
   homepage "https://github.com/vojtech/screenshot-test-automator"
   url "https://github.com/vojtech/screenshot-test-automator/releases/download/v1.0.0-alpha01/autoshot-processor-1.0.0-alpha01-standalone.jar"
-  sha256 "3959df53872d327a38c560b14a4413a6d7ed62852ff68786885ef9b9d782e6d6"
+  sha256 "cf015bd1d5f652f51e7f8008263fc5fe7b14172376aeefa8ef0b55b928fe2cb9"
   license "Apache-2.0"
 
   depends_on "openjdk"
