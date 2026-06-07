@@ -117,9 +117,39 @@ Copies the generated test wrappers to `src/screenshotTest/kotlin` so the Android
 
 ## Direct CLI Usage
 
-If you prefer to bypass the Gradle plugin completely, you can execute the CLI runner directly using Java.
+If you prefer to bypass the Gradle plugin completely, you can install and use the standalone CLI runner.
+
+### Installing the CLI
+
+#### Via Homebrew
+You can install the CLI tool using Homebrew:
+
+```bash
+brew install vojtech/autoshot/autoshot
+```
+
+Or tap the repository first:
+
+```bash
+brew tap vojtech/autoshot
+brew install autoshot
+```
+
+#### Via Manual Download
+Alternatively, download the standalone JAR directly from the [releases page](https://github.com/vojtech/autoshot/releases) and execute it using Java.
 
 ### Option A: Standalone Mode (Source Scan)
+
+**Using Homebrew command:**
+```bash
+autoshot \
+  --sources "src/main/kotlin,src/debug/kotlin" \
+  --output "build/generated/autoshot/debug/kotlin" \
+  --custom-annotations "com.example.MyCustomPreview" \
+  --visibility-report "build/generated/autoshot/visibility_report.txt"
+```
+
+**Using raw JAR directly:**
 ```bash
 java -cp autoshot-processor.jar com.fediim.autoshot.processor.CliMain \
   --sources "src/main/kotlin,src/debug/kotlin" \
@@ -129,6 +159,16 @@ java -cp autoshot-processor.jar com.fediim.autoshot.processor.CliMain \
 ```
 
 ### Option B: Metadata Mode (KSP Metadata Parsing)
+
+**Using Homebrew command:**
+```bash
+autoshot \
+  --metadata "build/generated/ksp/debug/resources/autoshot_metadata.txt" \
+  --output "build/generated/autoshot/debug/kotlin" \
+  --visibility-report "build/generated/autoshot/visibility_report.txt"
+```
+
+**Using raw JAR directly:**
 ```bash
 java -cp autoshot-processor.jar com.fediim.autoshot.processor.CliMain \
   --metadata "build/generated/ksp/debug/resources/autoshot_metadata.txt" \
