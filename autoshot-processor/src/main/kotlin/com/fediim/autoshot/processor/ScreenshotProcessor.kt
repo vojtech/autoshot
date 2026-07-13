@@ -151,7 +151,8 @@ class ScreenshotProcessor(
 
             validFunctions.forEach { (func, previewAnnos) ->
                 val functionName = func.simpleName.asString()
-                val annoInfos = previewAnnos.map { formatAnnotation(it) }
+                val extraImports = mutableSetOf<String>()
+                val annoInfos = previewAnnos.map { formatAnnotation(it, extraImports) }
 
                 val previewParameter = func.parameters.find { param ->
                     param.annotations.any { it.shortName.asString() == AnnotationNames.PREVIEW_PARAMETER }
@@ -161,8 +162,11 @@ class ScreenshotProcessor(
                     val paramName = previewParameter.name!!.asString()
                     val resolvedType = previewParameter.type.resolve()
                     val paramTypeQName = resolvedType.declaration.qualifiedName?.asString() ?: resolvedType.declaration.simpleName.asString()
+                    if (resolvedType.declaration.qualifiedName != null) {
+                        extraImports.add(resolvedType.declaration.qualifiedName!!.asString())
+                    }
                     val annotation = previewParameter.annotations.first { it.shortName.asString() == AnnotationNames.PREVIEW_PARAMETER }
-                    val annoInfo = formatAnnotation(annotation)
+                    val annoInfo = formatAnnotation(annotation, extraImports)
                     KspParameterInfo(paramName, paramTypeQName, annoInfo.fullText)
                 } else {
                     null
@@ -173,9 +177,11 @@ class ScreenshotProcessor(
                         name = functionName,
                         packageName = packageName,
                         sourceFileName = sourceFileName,
-                        imports = imports,
+                        imports = imports + extraImports.toList(),
                         annotations = annoInfos,
                         previewParameter = paramInfo,
+                        isPrivate = func.isPrivate(),
+                        isInternal = func.isInternal(),
                     ),
                 )
             }
@@ -200,7 +206,7 @@ class ScreenshotProcessor(
         return result
     }
 
-    private fun formatAnnotation(annotation: KSAnnotation): KspAnnotationInfo {
+    private fun formatAnnotation(annotation: KSAnnotation, extraImports: MutableSet<String>? = null): KspAnnotationInfo {
         val declaration = annotation.annotationType.resolve().declaration
         val qualifiedName = declaration.qualifiedName?.asString() ?: annotation.shortName.asString()
 
@@ -215,7 +221,7 @@ class ScreenshotProcessor(
         val argsStr = if (filteredArguments.isNotEmpty()) {
             filteredArguments.joinToString(", ") { arg ->
                 val argName = arg.name?.asString()
-                val argVal = formatValue(arg.value)
+                val argVal = formatValue(arg.value, extraImports)
                 if (argName != null) "$argName = $argVal" else argVal
             }
         } else {
@@ -226,7 +232,7 @@ class ScreenshotProcessor(
         return KspAnnotationInfo(qualifiedName, fullText)
     }
 
-    private fun formatValue(value: Any?): String {
+    private fun formatValue(value: Any?, extraImports: MutableSet<String>? = null): String {
         if (value == null) return "null"
         return when (value) {
             is String -> "\"${value.replace("\"", "\\\"")}\""
@@ -236,20 +242,25 @@ class ScreenshotProcessor(
             is com.google.devtools.ksp.symbol.KSType -> {
                 val decl = value.declaration
                 val qName = decl.qualifiedName?.asString() ?: decl.simpleName.asString()
-                "$qName::class"
+                extraImports?.add(qName)
+                val shortName = qName.split('.')
+                    .dropWhile { it.firstOrNull()?.isUpperCase() != true }
+                    .joinToString(".")
+                    .ifEmpty { qName.substringAfterLast('.') }
+                "$shortName::class"
             }
 
             is KSAnnotation -> {
-                val info = formatAnnotation(value)
+                val info = formatAnnotation(value, extraImports)
                 info.fullText
             }
 
             is List<*> -> {
-                value.joinToString(", ", prefix = "[", postfix = "]") { formatValue(it) }
+                value.joinToString(", ", prefix = "[", postfix = "]") { formatValue(it, extraImports) }
             }
 
             is Array<*> -> {
-                value.joinToString(", ", prefix = "[", postfix = "]") { formatValue(it) }
+                value.joinToString(", ", prefix = "[", postfix = "]") { formatValue(it, extraImports) }
             }
 
             else -> value.toString()
@@ -269,6 +280,8 @@ class ScreenshotProcessor(
                 writer.write("FUNC:${func.name}\n")
                 writer.write("PACKAGE:${func.packageName}\n")
                 writer.write("FILE:${func.sourceFileName}\n")
+                writer.write("PRIVATE:${func.isPrivate}\n")
+                writer.write("INTERNAL:${func.isInternal}\n")
                 func.imports.forEach { imp ->
                     writer.write("IMPORT:$imp\n")
                 }
@@ -351,6 +364,8 @@ class KspFunctionInfo(
     val imports: List<String>,
     val annotations: List<KspAnnotationInfo>,
     val previewParameter: KspParameterInfo?,
+    val isPrivate: Boolean,
+    val isInternal: Boolean,
 )
 
 class KspAnnotationInfo(
