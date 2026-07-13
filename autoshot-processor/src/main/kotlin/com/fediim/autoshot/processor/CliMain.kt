@@ -139,7 +139,11 @@ object CliMain {
                 if (trimmed.isNotEmpty()) {
                     knownPreviewAnnotations.add(trimmed)
                     if (trimmed.contains('.')) {
-                        knownPreviewAnnotations.add(trimmed.substringAfterLast('.'))
+                        val shortName = trimmed.split('.')
+                            .dropWhile { it.firstOrNull()?.isUpperCase() != true }
+                            .joinToString(".")
+                            .ifEmpty { trimmed.substringAfterLast('.') }
+                        knownPreviewAnnotations.add(shortName)
                     }
                 }
             }
@@ -225,6 +229,8 @@ object CliMain {
         var currentName = ""
         var currentPackage = ""
         var currentFile = ""
+        var currentIsPrivate = false
+        var currentIsInternal = false
         val currentAnnos = mutableListOf<ParsedAnnotation>()
         var currentParam: PreviewParameterInfo? = null
         val currentImports = mutableListOf<String>()
@@ -238,6 +244,8 @@ object CliMain {
                     currentAnnos.clear()
                     currentParam = null
                     currentImports.clear()
+                    currentIsPrivate = false
+                    currentIsInternal = false
                 }
 
                 line.startsWith("PACKAGE:") -> {
@@ -246,6 +254,14 @@ object CliMain {
 
                 line.startsWith("FILE:") -> {
                     currentFile = line.removePrefix("FILE:")
+                }
+
+                line.startsWith("PRIVATE:") -> {
+                    currentIsPrivate = line.removePrefix("PRIVATE:").toBoolean()
+                }
+
+                line.startsWith("INTERNAL:") -> {
+                    currentIsInternal = line.removePrefix("INTERNAL:").toBoolean()
                 }
 
                 line.startsWith("IMPORT:") -> {
@@ -260,7 +276,10 @@ object CliMain {
                     if (parts.size == 2) {
                         val qName = parts[0]
                         val fullText = parts[1]
-                        val shortName = qName.substringAfterLast('.')
+                        val shortName = qName.split('.')
+                            .dropWhile { it.firstOrNull()?.isUpperCase() != true }
+                            .joinToString(".")
+                            .ifEmpty { qName.substringAfterLast('.') }
                         val body = if (fullText.contains('(')) {
                             fullText.substringAfter('(').substringBeforeLast(')')
                         } else {
@@ -276,7 +295,10 @@ object CliMain {
                         val pName = parts[0]
                         val pTypeQName = parts[1]
                         val pAnnoText = parts[2]
-                        val pTypeShortName = pTypeQName.substringAfterLast('.')
+                        val pTypeShortName = pTypeQName.split('.')
+                            .dropWhile { it.firstOrNull()?.isUpperCase() != true }
+                            .joinToString(".")
+                            .ifEmpty { pTypeQName.substringAfterLast('.') }
                         currentParam = PreviewParameterInfo(pName, pTypeShortName, pAnnoText)
                     }
                 }
@@ -288,8 +310,8 @@ object CliMain {
                                 name = currentName,
                                 packageName = currentPackage,
                                 filePath = currentFile,
-                                isPrivate = false,
-                                isInternal = false,
+                                isPrivate = currentIsPrivate,
+                                isInternal = currentIsInternal,
                                 previewAnnotations = currentAnnos.toList(),
                                 previewParameter = currentParam,
                             ),

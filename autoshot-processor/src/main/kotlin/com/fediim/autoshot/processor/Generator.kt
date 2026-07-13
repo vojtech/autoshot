@@ -55,7 +55,8 @@ object Generator {
                 appendLine()
             }
 
-            val allImports = imports.toMutableSet()
+            val requiredImports = filterRequiredImports(imports, previewFunctions)
+            val allImports = requiredImports.toMutableSet()
             allImports.add("com.android.tools.screenshot.PreviewTest")
             allImports.add("androidx.compose.runtime.Composable")
 
@@ -64,16 +65,20 @@ object Generator {
             }
             appendLine()
 
-            appendLine("class $testFileName {")
             previewFunctions.forEachIndexed { index, func ->
-                appendLine("    @PreviewTest")
-                appendLine("    @Composable")
+                appendLine("@PreviewTest")
+                appendLine("@Composable")
                 func.previewAnnotations.forEach { ann ->
-                    appendLine("    ${ann.fullText}")
+                    appendLine("${ann.fullText}")
                 }
 
-                val testFunctionName = "test${func.name.replaceFirstChar { it.uppercase() }}"
-                append("    fun $testFunctionName")
+                val testFunctionName = "Test${func.name.replaceFirstChar { it.uppercase() }}"
+                val modifier = when {
+                    func.isPrivate -> "private "
+                    func.isInternal -> "internal "
+                    else -> ""
+                }
+                append("${modifier}fun $testFunctionName")
 
                 if (func.previewParameter != null) {
                     append("(")
@@ -85,18 +90,48 @@ object Generator {
                 appendLine()
 
                 if (func.previewParameter != null) {
-                    appendLine("        ${func.name}(${func.previewParameter.name})")
+                    appendLine("    ${func.name}(${func.previewParameter.name})")
                 } else {
-                    appendLine("        ${func.name}()")
+                    appendLine("    ${func.name}()")
                 }
-                appendLine("    }")
+                appendLine("}")
                 if (index < previewFunctions.lastIndex) {
                     appendLine()
                 }
             }
-            appendLine("}")
         }
 
         outputFile.writeText(content)
+    }
+
+    private fun filterRequiredImports(
+        imports: List<String>,
+        previewFunctions: List<PreviewFunctionInfo>
+    ): List<String> {
+        val usedSymbols = mutableSetOf<String>()
+        previewFunctions.forEach { func ->
+            // Symbols from annotations
+            func.previewAnnotations.forEach { ann ->
+                usedSymbols.addAll(extractSymbols(ann.fullText))
+            }
+
+            // Symbols from parameters
+            func.previewParameter?.let { param ->
+                usedSymbols.addAll(extractSymbols(param.annotationText))
+                usedSymbols.addAll(extractSymbols(param.type))
+            }
+        }
+
+        return imports.filter { import ->
+            if (import.endsWith(".*")) return@filter true
+
+            val lastPart = import.substringAfterLast('.')
+            usedSymbols.contains(lastPart)
+        }
+    }
+
+    private fun extractSymbols(text: String): Set<String> {
+        val regex = Regex("[a-zA-Z_][a-zA-Z0-9_]*")
+        return regex.findAll(text).map { it.value }.toSet()
     }
 }
