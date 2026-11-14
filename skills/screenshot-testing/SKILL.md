@@ -15,21 +15,30 @@ In KSP mode, AutoShot automatically scans the source files during compilation fo
 
 ### Gradle Setup
 Ensure the following configurations exist:
-1. `libs.versions.toml` contains:
+1. `gradle.properties` enables AGP screenshot test suites:
+   ```properties
+   android.experimental.enableScreenshotTest=true
+   android.experimental.testSuiteSupport=true
+   ```
+2. `libs.versions.toml` contains AGP 9.5+ and AutoShot (no standalone `com.android.compose.screenshot` plugin is needed):
    ```toml
    [plugins]
-   fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
+   fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha02" }
    ```
-2. The plugin is applied to the module-level `build.gradle.kts`:
+3. The plugin is applied to the module-level `build.gradle.kts`:
    ```kotlin
    plugins {
        alias(libs.plugins.fediim.autoshot)
    }
    ```
-3. KSP is enabled (default behavior):
+4. KSP and optional suite settings are configured:
    ```kotlin
    autoshot {
        useKsp.set(true)
+       // suiteName.set("screenshotTest")
+       // engineVersion.set("0.0.1-alpha16")
+       // targetVariants.set(listOf("debug"))
+       // imageDifferenceThreshold.set(0.01f)
    }
    ```
 
@@ -58,7 +67,7 @@ When you want to scan source code without compiler overhead or compile-time depe
    ```
 2. Run the processor CLI:
    ```bash
-   java -jar autoshot-processor/build/libs/autoshot-processor-1.0.0-alpha01-standalone.jar \
+   java -jar autoshot-processor/build/libs/autoshot-processor-1.0.0-alpha02-standalone.jar \
      --sources "path/to/src/main/kotlin,path/to/src/debug/kotlin" \
      --output "src/screenshotTest/kotlin"
    ```
@@ -68,55 +77,51 @@ When you want to scan source code without compiler overhead or compile-time depe
 
 ## 3. Writing Screenshot Tests Manually (Without AutoShot)
 
-If you do not want to use AutoShot to generate the test wrappers, you can write them manually. The Jetpack Compose Screenshot Testing engine scans `src/screenshotTest/kotlin` for tests using specific annotations.
+If you do not want to use AutoShot to generate the test wrappers, you can write them manually. AGP's Compose Screenshot Test Suite (`android.testOptions.screenshotTests`) scans the suite source set (`src/<suiteName>/kotlin/`, by default `src/screenshotTest/kotlin/`) for tests using specific annotations.
 
 ### Annotation Requirements
-For the test runner to pick up and execute a test method, the method must meet these criteria:
-1. Declared inside a class located in the `screenshotTest` source set (`src/screenshotTest/kotlin/`).
+For the test runner to pick up and execute a test method, it must meet these criteria:
+1. Located in the screenshot test suite source set (`src/<suiteName>/kotlin/`, default `src/screenshotTest/kotlin/`), with `com.android.tools.screenshot:screenshot-validation-api` added to the suite's `dependencies.implementation` (or configured automatically by `com.fediim.plugin.autoshot`).
 2. Annotated with `@com.android.tools.screenshot.PreviewTest`.
 3. Annotated with `@androidx.compose.runtime.Composable`.
 4. Annotated with a Compose preview annotation (e.g., `@androidx.compose.ui.tooling.preview.Preview` or `@androidx.compose.ui.tooling.preview.PreviewLightDark`).
 
 ### How to Generate Manual Tests (AI Agent Instructions)
 When asked to write screenshot tests manually:
-1. **Locate Previews**: Search the codebase for public `@Composable` preview functions (e.g. `fun MyButtonPreview()`). Note their package names and imports.
+1. **Locate Previews**: Search the codebase for non-private `@Composable` preview functions (e.g. `fun MyButtonPreview()`). Note their package names and imports.
 2. **Create Test File**: Create a new test file under `src/screenshotTest/kotlin/` matching the package structure (e.g., `src/screenshotTest/kotlin/com/example/MyButtonScreenshotTest.kt`).
-3. **Declare Class**: Write a test class containing a test method for each preview function:
+3. **Declare Top-Level Test Function**: Write a top-level test function for each preview function:
    ```kotlin
    package com.example
 
    import androidx.compose.runtime.Composable
    import androidx.compose.ui.tooling.preview.Preview
    import com.android.tools.screenshot.PreviewTest
-   // Import the Composable preview function
-   import com.example.MyButtonPreview
 
-   class MyButtonScreenshotTest {
-       @PreviewTest
-       @Composable
-       @Preview
-       fun testMyButtonPreview() {
-           MyButtonPreview()
-       }
+   @PreviewTest
+   @Composable
+   @Preview
+   fun testMyButtonPreview() {
+       MyButtonPreview()
    }
    ```
-4. **Parameter Handling**: If the preview uses `@PreviewParameter`, declare the parameter in the test method signature matching the original preview function.
+4. **Parameter Handling**: If the preview uses `@PreviewParameter`, declare the parameter in the test function signature matching the original preview function.
 
 ---
 
 ## 4. Running and Validating Screenshot Tests
 
-Once the tests are generated (either by AutoShot or manually), use the following Gradle commands to manage reference baselines (goldens) and run validations:
+Once the tests are generated (either by AutoShot or manually), use the AGP test suite Gradle commands (`update<Variant><SuiteName><Target>TestSuite` and `test<Variant><SuiteName><Target>TestSuite`) to manage reference baselines (goldens) and run validations:
 
 ### Update Goldens (Record Reference Images)
-Generate or update the baseline images for visual comparison:
+Generate or update the baseline images for visual comparison (saved under `src/screenshotTestDefaultDebug/reference/`):
 ```bash
-./gradlew updateDebugScreenshotTest
+./gradlew updateDebugScreenshotTestDefaultTestSuite
 ```
 
 ### Validate Screenshot Tests (Run Verification)
 Compare current layouts against the baseline images:
 ```bash
-./gradlew validateDebugScreenshotTest
+./gradlew testDebugScreenshotTestDefaultTestSuite
 ```
-Reports are generated at `build/reports/screenshotTest/preview/` as HTML files.
+Reports are generated at `build/reports/tests/testDebugScreenshotTestDefaultTestSuite/index.html`.

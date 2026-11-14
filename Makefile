@@ -31,7 +31,11 @@ publish-docs:
 
 # Update screenshots
 update:
-	./gradlew :example:autoshot-basic:updateDebugScreenshotTest
+	./gradlew :example:autoshot-basic:updateDebugScreenshotTestDefaultTestSuite
+
+# Verify screenshots
+test-screenshots:
+	./gradlew :example:autoshot-basic:testDebugScreenshotTestDefaultTestSuite
 
 
 # Generate dokka

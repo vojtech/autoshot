@@ -23,7 +23,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.dokka) apply false
     alias(libs.plugins.ktlint) apply false
-    alias(libs.plugins.screenshot) apply false
     alias(libs.plugins.fediim.dokka) apply false
     alias(libs.plugins.fediim.android.application) apply false
     alias(libs.plugins.fediim.android.library) apply false

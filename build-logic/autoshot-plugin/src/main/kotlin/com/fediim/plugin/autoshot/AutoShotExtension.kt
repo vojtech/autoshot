@@ -34,4 +34,28 @@ interface AutoShotExtension {
      * A list of fully qualified names of custom preview annotations to recognize.
      */
     val customAnnotations: ListProperty<String>
+
+    /**
+     * Name of the AGP screenshot test suite to register or configure under
+     * `android.testOptions.screenshotTests`. Defaults to `"screenshotTest"`.
+     */
+    val suiteName: Property<String>
+
+    /**
+     * Version of the AGP screenshot test engine (`com.android.tools.screenshot:screenshot-validation-junit-engine`).
+     * Defaults to the `screenshot` version from the `libs` version catalog when present, otherwise `"0.0.1-alpha16"`.
+     */
+    val engineVersion: Property<String>
+
+    /**
+     * Build variant names targeted by the screenshot test suite. When left empty, defaults to `["debug"]`
+     * if no flavor-prefixed variants exist or only standard build types are used.
+     */
+    val targetVariants: ListProperty<String>
+
+    /**
+     * Maximum allowed pixel difference threshold (`0.0f` to `1.0f`) before a screenshot comparison fails.
+     * Optional; left unset when not configured.
+     */
+    val imageDifferenceThreshold: Property<Float>
 }

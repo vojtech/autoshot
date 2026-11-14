@@ -31,6 +31,7 @@ kotlin {
 }
 
 dependencies {
+    compileOnly(libs.android.gradle.plugin)
     compileOnly(libs.kotlin.gradle.plugin)
 }
 
@@ -40,7 +41,7 @@ gradlePlugin {
             id = "com.fediim.plugin.autoshot"
             implementationClass = "AutoShotConventionPlugin"
             displayName = "Fediim Screenshot Test Plugin"
-            description = "Automates setup for screenshot testing with KSP and Android"
+            description = "Automates setup for Compose screenshot testing with AGP test suites, KSP, and AutoShot"
         }
     }
 }
