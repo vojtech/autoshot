@@ -106,7 +106,7 @@ object Generator {
 
     private fun filterRequiredImports(
         imports: List<String>,
-        previewFunctions: List<PreviewFunctionInfo>
+        previewFunctions: List<PreviewFunctionInfo>,
     ): List<String> {
         val usedSymbols = mutableSetOf<String>()
         previewFunctions.forEach { func ->

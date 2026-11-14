@@ -1,9 +1,9 @@
 # AutoShot
 
-AutoShot provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications. It consists of:
-1. A compiler-agnostic **CLI Processor** that generates JUnit test wrappers from Composable previews.
+AutoShot provides a set of tools to automate the generation and execution of screenshot tests for Android Compose applications using AGP's native Compose Screenshot Test Suites (`android.testOptions.screenshotTests`):
+1. A compiler-agnostic **CLI Processor** that generates top-level `@PreviewTest` wrappers from Composable previews.
 2. A **KSP Processor** that runs during compilation to discover annotations and output metadata.
-3. A **Gradle Plugin** that wires up the generation and execution tasks seamlessly.
+3. A **Gradle Plugin** that configures AGP's screenshot test suite and wires up wrapper generation and copy tasks seamlessly.
 
 ---
 
@@ -12,7 +12,7 @@ AutoShot provides a set of tools to automate the generation and execution of scr
 AutoShot supports two modes of execution for generating test files:
 
 ### 1. KSP Mode (Default, compiler-integrated)
-* **How it works**: KSP scans code for `@Preview` annotations during compilation and outputs a lightweight metadata file (`autoshot_metadata.txt`). The `generate<VariantName>ScreenshotWrappers` task then reads this metadata to generate the final screenshot test classes.
+* **How it works**: KSP scans code for `@Preview` annotations during compilation and outputs a lightweight metadata file (`autoshot_metadata.txt`). The `generate<VariantName>ScreenshotWrappers` task then reads this metadata to generate the final screenshot test files.
 * **Benefit**: 100% accurate symbol resolution (including wildcard imports and custom annotations declared in external libraries).
 
 ### 2. Standalone Mode (Independent scan)
@@ -66,47 +66,51 @@ dependencyResolutionManagement {
 }
 ```
 
-### 3. Enable Experimental Screenshot Testing (`gradle.properties`)
-Add the Android Screenshot Testing flag:
+### 3. Enable Experimental Screenshot Test Suites (`gradle.properties`)
+Add both Android Screenshot Test Suite flags (AGP 9.5+ integrates screenshot testing via native test suites; the standalone `com.android.compose.screenshot` plugin is no longer required):
 ```properties
 android.experimental.enableScreenshotTest=true
+android.experimental.testSuiteSupport=true
 ```
 
 ### 4. Configure Version Catalog (`libs.versions.toml`)
-Add the compose-screenshot plugin and AutoShot binaries:
+Configure AGP 9.5+, the screenshot validation API/engine version, and the AutoShot plugin:
 ```toml
 [versions]
-screenshot = "0.0.1-alpha13"
+agp = "9.5.1"
+screenshot = "0.0.1-alpha16"
+screenshot-validation-api = "0.0.1-alpha16"
 
 [libraries]
-screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
+screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot-validation-api" }
 
 [plugins]
-screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }
-fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha01" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+fediim-autoshot = { id = "com.fediim.plugin.autoshot", version = "1.0.0-alpha02" }
 ```
 
-### 5. Apply the Plugins
+### 5. Apply the Plugin
 
-**Root `build.gradle.kts`**:
+**Module-level `build.gradle.kts`** (no root `com.android.compose.screenshot` plugin needed):
 ```kotlin
 plugins {
-    alias(libs.plugins.screenshot) apply false
-}
-```
-
-**Module-level `build.gradle.kts`**:
-```kotlin
-plugins {
+    alias(libs.plugins.android.application) // or android.library
     alias(libs.plugins.fediim.autoshot)
 }
 
 autoshot {
     // Set to false to use Standalone mode (default is true if KSP is on classpath)
     useKsp.set(true)
-    
+
     // Optional: Fully qualified class names of custom preview annotations to scan for
     customAnnotations.set(listOf("com.example.feature.MyCustomPreview"))
+
+    // Optional AGP test suite overrides:
+    // suiteName.set("screenshotTest")
+    // engineVersion.set("0.0.1-alpha16")
+    // targetVariants.set(listOf("debug"))
+    // imageDifferenceThreshold.set(0.01f)
 }
 ```
 
@@ -122,20 +126,21 @@ Regardless of which mode you choose, the plugin registers the following tasks:
 ```
 This task is always responsible for generating the Kotlin wrapper files (under `build/generated/autoshot/<variant>/kotlin`) from either the KSP metadata file (KSP mode) or by parsing sources directly (Standalone mode).
 
-### 2. Copy to Screenshot Source Set
+### 2. Copy to Screenshot Test Suite Source Set
 ```bash
 ./gradlew copyDebugScreenshotTests
 ```
-Copies the generated test wrappers to `src/screenshotTest/kotlin` so the Android screenshot testing runner can compile and run them.
+Copies the generated top-level `@PreviewTest` wrappers to `src/<suiteName>/kotlin` (by default `src/screenshotTest/kotlin`) so AGP's screenshot test suite can compile and run them.
 
-### 3. Run Validation Tests
+### 3. Run Validation Tests (AGP Test Suites)
 ```bash
-# Update reference baselines (goldens)
-./gradlew :<module>:updateDebugScreenshotTest
+# Update reference baselines (goldens into src/screenshotTestDefaultDebug/reference/)
+./gradlew :<module>:updateDebugScreenshotTestDefaultTestSuite
 
-# Validate screenshots against reference baselines
-./gradlew :<module>:validateDebugScreenshotTest
+# Validate screenshots against reference baselines (report in build/reports/tests/)
+./gradlew :<module>:testDebugScreenshotTestDefaultTestSuite
 ```
+Task naming follows AGP test suites: `update<Variant><SuiteName><Target>TestSuite` and `test<Variant><SuiteName><Target>TestSuite` (where `<SuiteName>` defaults to `ScreenshotTest` and `<Target>` is `Default`).
 
 ---
 

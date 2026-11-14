@@ -14,31 +14,41 @@
  * limitations under the License.
  */
 
+import com.android.build.api.dsl.CommonExtension
+import com.android.build.api.dsl.ScreenshotTestSuite
+import com.android.build.api.variant.AndroidComponentsExtension
+import com.android.build.api.variant.ApplicationAndroidComponentsExtension
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
+import com.android.build.api.variant.Variant
+import com.android.build.api.variant.VariantBuilder
 import com.fediim.plugin.autoshot.AutoShotExtension
 import com.fediim.plugin.autoshot.AutoShotGenerateTask
 import com.fediim.plugin.autoshot.UpdatePreviewVisibilityTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.artifacts.dsl.DependencyCollector
+import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.tasks.Copy
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.findByType
 import org.gradle.kotlin.dsl.register
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Locale
 
 /**
- * A Gradle plugin that configures a project for managing screenshot-based Compose tests.
+ * A Gradle plugin that configures an Android application or library module for Compose screenshot testing
+ * using AGP's native screenshot test suites (`android.testOptions.screenshotTests`) and AutoShot's
+ * KSP/standalone wrapper generator.
  */
 class AutoShotConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
-            // Check if KSP is available on classpath
             val isKspAvailable = try {
                 Class.forName("com.google.devtools.ksp.gradle.KspGradleSubplugin")
                 true
-            } catch (e: ClassNotFoundException) {
+            } catch (_: ClassNotFoundException) {
                 false
             }
 
@@ -46,8 +56,23 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 .map { it.toBoolean() }
                 .getOrElse(false)
 
+            val libs = extensions.findByType<VersionCatalogsExtension>()?.find("libs")?.orElse(null)
+            val bom = libs?.findLibrary("androidx-compose-bom")?.map { it.get() }?.orElse(null)
+                ?: DEFAULT_COMPOSE_BOM
+            val annotationLib = libs?.findLibrary("autoshot-annotation")?.map { it.get() }?.orElse(null)
+                ?: DEFAULT_ANNOTATION
+            val processorLib = libs?.findLibrary("autoshot-processor")?.map { it.get() }?.orElse(null)
+                ?: DEFAULT_PROCESSOR
+            val screenshotValidationApiLib = libs?.findLibrary("screenshot-validation-api")?.map { it.get() }?.orElse(null)
+                ?: DEFAULT_VALIDATION_API
+            val defaultEngineVersion = libs?.findVersion("screenshot")?.map { it.requiredVersion }?.orElse(null)
+                ?: DEFAULT_ENGINE_VERSION
+
             val extension = extensions.create("autoshot", AutoShotExtension::class.java)
             extension.useKsp.convention(isKspAvailable && !disableKspApp)
+            extension.suiteName.convention(DEFAULT_SUITE_NAME)
+            extension.engineVersion.convention(defaultEngineVersion)
+            extension.targetVariants.convention(emptyList())
 
             val autoshotProcessorConf = configurations.create("autoshotProcessor") {
                 isCanBeConsumed = false
@@ -58,20 +83,36 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 pluginManager.apply("com.google.devtools.ksp")
             }
 
-            // Apply screenshot plugin and configure variants reflectively when Android is applied
             pluginManager.withPlugin("com.android.application") {
-                pluginManager.apply("com.android.compose.screenshot")
-                enableScreenshotTestReflectively(target)
-                configureVariantsReflectively(target, extension, autoshotProcessorConf)
+                val components = extensions.findByType<ApplicationAndroidComponentsExtension>() ?: return@withPlugin
+                configureAndroidComponents(
+                    components = components,
+                    extension = extension,
+                    autoshotProcessorConf = autoshotProcessorConf,
+                    bom = bom,
+                    screenshotValidationApiLib = screenshotValidationApiLib,
+                )
             }
 
             pluginManager.withPlugin("com.android.library") {
-                pluginManager.apply("com.android.compose.screenshot")
-                enableScreenshotTestReflectively(target)
-                configureVariantsReflectively(target, extension, autoshotProcessorConf)
+                val components = extensions.findByType<LibraryAndroidComponentsExtension>() ?: return@withPlugin
+                configureAndroidComponents(
+                    components = components,
+                    extension = extension,
+                    autoshotProcessorConf = autoshotProcessorConf,
+                    bom = bom,
+                    screenshotValidationApiLib = screenshotValidationApiLib,
+                )
             }
 
-            configureScreenshotDependencies(isKspAvailable, disableKspApp, autoshotProcessorConf)
+            configureModuleDependencies(
+                isKspAvailable = isKspAvailable,
+                disableKspApp = disableKspApp,
+                autoshotProcessorConf = autoshotProcessorConf,
+                bom = bom,
+                annotationLib = annotationLib,
+                processorLib = processorLib,
+            )
 
             afterEvaluate {
                 val disableKsp = providers.gradleProperty("autoshot.disableKsp")
@@ -97,67 +138,80 @@ class AutoShotConventionPlugin : Plugin<Project> {
         }
     }
 
-    private fun enableScreenshotTestReflectively(project: Project) {
-        val androidExt = project.extensions.findByName("android") ?: return
-        try {
-            val getExperimentalPropertiesMethod = androidExt.javaClass.getMethod("getExperimentalProperties")
-
-            @Suppress("UNCHECKED_CAST")
-            val experimentalProperties = getExperimentalPropertiesMethod.invoke(androidExt) as? MutableMap<String, Any>
-            experimentalProperties?.put("android.experimental.enableScreenshotTest", true)
-        } catch (e: Exception) {
-            project.logger.warn("AutoShot: Failed to set android.experimental.enableScreenshotTest reflectively", e)
-        }
-    }
-
-    private fun configureVariantsReflectively(
-        project: Project,
+    @Suppress("UnstableApiUsage")
+    private fun <DslT : CommonExtension, BuilderT : VariantBuilder, VariantT : Variant> Project.configureAndroidComponents(
+        components: AndroidComponentsExtension<DslT, BuilderT, VariantT>,
         extension: AutoShotExtension,
         autoshotProcessorConf: Configuration,
+        bom: Any,
+        screenshotValidationApiLib: Any,
     ) {
-        val androidComponents = project.extensions.findByName("androidComponents") ?: return
-        try {
-            val selectorMethod = androidComponents.javaClass.getMethod("selector")
-            val selectorObj = selectorMethod.invoke(androidComponents)
-            val allMethod = selectorObj.javaClass.getMethod("all")
-            val allSelector = allMethod.invoke(selectorObj)
+        val dependencyHandler = dependencies
 
-            val onVariantsMethod = androidComponents.javaClass.methods.firstOrNull {
-                it.name == "onVariants" &&
-                    it.parameterCount == 2 &&
-                    it.parameterTypes[1].name == "org.gradle.api.Action"
-            } ?: androidComponents.javaClass.methods.first {
-                it.name == "onVariants" &&
-                    it.parameterCount == 2
-            }
+        components.finalizeDsl { commonExt ->
+            // AGP 9.5+ ComposePreviewRunfiles task realization validates unitTests.isIncludeAndroidResources
+            commonExt.testOptions.unitTests.isIncludeAndroidResources = true
+            val suiteName = extension.suiteName.getOrElse(DEFAULT_SUITE_NAME)
+            val resolvedEngineVersion = extension.engineVersion.getOrElse(DEFAULT_ENGINE_VERSION)
+            val threshold = extension.imageDifferenceThreshold.orNull
+            val requestedVariants = extension.targetVariants.getOrElse(emptyList())
 
-            val callback = object : org.gradle.api.Action<Any> {
-                override fun execute(variant: Any) {
-                    try {
-                        val variantName = variant.javaClass.getMethod("getName").invoke(variant) as String
-                        configureVariant(project, variantName, variant, extension, autoshotProcessorConf)
-                    } catch (e: Exception) {
-                        project.logger.error("AutoShot: Failed to process variant reflectively", e)
+            val suites = commonExt.testOptions.screenshotTests
+            val configureSuite: ScreenshotTestSuite.() -> Unit = {
+                if (engineVersion.isNullOrBlank()) {
+                    engineVersion = resolvedEngineVersion
+                }
+                if (imageDifferenceThreshold == null && threshold != null) {
+                    imageDifferenceThreshold = threshold
+                }
+                if (targetVariants.isEmpty()) {
+                    if (requestedVariants.isNotEmpty()) {
+                        targetVariants.addAll(requestedVariants)
+                    } else if (commonExt.productFlavors.isEmpty()) {
+                        val defaultVariant = if ("debug" in commonExt.buildTypes.names) {
+                            "debug"
+                        } else {
+                            commonExt.buildTypes.names.firstOrNull()
+                        }
+                        if (defaultVariant != null) {
+                            targetVariants.add(defaultVariant)
+                        }
                     }
+                }
+                dependencies {
+                    addDependency(implementation, dependencyHandler.platform(bom), dependencyHandler)
+                    implementation.add("androidx.compose.ui:ui-tooling")
+                    addDependency(implementation, screenshotValidationApiLib, dependencyHandler)
                 }
             }
 
-            onVariantsMethod.invoke(androidComponents, allSelector, callback)
-        } catch (e: Exception) {
-            project.logger.warn("AutoShot: Failed to configure variants reflectively", e)
+            if (suites.findByName(suiteName) != null) {
+                suites.named(suiteName, configureSuite)
+            } else {
+                suites.create(suiteName, configureSuite)
+            }
+        }
+
+        components.onVariants(components.selector().all()) { variant ->
+            configureVariant(
+                project = this,
+                variant = variant,
+                extension = extension,
+                autoshotProcessorConf = autoshotProcessorConf,
+            )
         }
     }
 
     private fun configureVariant(
         project: Project,
-        variantName: String,
-        variant: Any,
+        variant: Variant,
         extension: AutoShotExtension,
         autoshotProcessorConf: Configuration,
     ) {
-        val capitalizedVariantName = variantName.replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-        }
+        val variantName = variant.name
+        val capitalizedVariantName = variantName.capitalizeName()
+        val suiteName = extension.suiteName.getOrElse(DEFAULT_SUITE_NAME)
+        val capitalizedSuiteName = suiteName.capitalizeName()
 
         val generateTask = project.tasks.register<AutoShotGenerateTask>("generate${capitalizedVariantName}ScreenshotWrappers") {
             group = "autoshot"
@@ -179,76 +233,87 @@ class AutoShotConventionPlugin : Plugin<Project> {
                 metadataFile.set(project.layout.buildDirectory.file("generated/ksp/$variantName/resources/autoshot_metadata.txt"))
                 dependsOn("ksp${capitalizedVariantName}Kotlin")
             } else {
-                try {
-                    val sourcesObj = variant.javaClass.getMethod("getSources").invoke(variant)
-                    val kotlinMethod = try {
-                        sourcesObj.javaClass.getMethod("getKotlin")
-                    } catch (e: Exception) {
-                        null
-                    }
-                    val javaMethod = try {
-                        sourcesObj.javaClass.getMethod("getJava")
-                    } catch (e: Exception) {
-                        null
-                    }
-                    val sourceDirectoriesObj = kotlinMethod?.invoke(sourcesObj) ?: javaMethod?.invoke(sourcesObj)
-                    if (sourceDirectoriesObj != null) {
-                        val allMethod = sourceDirectoriesObj.javaClass.getMethod("getAll")
-                        val allProvider = allMethod.invoke(sourceDirectoriesObj)
-                        sources.from(allProvider)
-                    } else {
-                        sources.from(project.files("src/$variantName/java", "src/$variantName/kotlin", "src/main/java", "src/main/kotlin"))
-                    }
-                } catch (e: Exception) {
-                    sources.from(project.files("src/$variantName/java", "src/$variantName/kotlin", "src/main/java", "src/main/kotlin"))
+                val kotlinSources = variant.sources.kotlin?.all
+                val javaSources = variant.sources.java?.all
+                if (kotlinSources != null) {
+                    sources.from(kotlinSources)
+                }
+                if (javaSources != null) {
+                    sources.from(javaSources)
+                }
+                if (kotlinSources == null && javaSources == null) {
+                    sources.from(
+                        project.files(
+                            "src/$variantName/java",
+                            "src/$variantName/kotlin",
+                            "src/main/java",
+                            "src/main/kotlin",
+                        ),
+                    )
                 }
             }
         }
 
         val copyTask = project.tasks.register<Copy>("copy${capitalizedVariantName}ScreenshotTests") {
             from(generateTask.flatMap { it.outputDir })
-            into("src/screenshotTest/kotlin")
+            into(project.layout.projectDirectory.dir("src/$suiteName/kotlin"))
             include("**/*ScreenshotTest.kt")
         }
 
+        val kotlinCompileTask = "compile${capitalizedVariantName}${capitalizedSuiteName}Kotlin"
+        val javaCompileTask = "compile${capitalizedVariantName}${capitalizedSuiteName}JavaWithJavac"
+        val kspSuiteTask = "ksp${capitalizedVariantName}${capitalizedSuiteName}Kotlin"
+
         project.tasks.configureEach {
-            if (name == "compile${capitalizedVariantName}ScreenshotTestKotlin") {
-                dependsOn(copyTask)
-            }
-            if (name == "ksp${capitalizedVariantName}ScreenshotTestKotlin") {
+            if (name == kotlinCompileTask || name == javaCompileTask || name == kspSuiteTask) {
                 dependsOn(copyTask)
             }
         }
     }
-}
 
-internal fun Project.configureScreenshotDependencies(
-    isKspAvailable: Boolean,
-    disableKspApp: Boolean,
-    autoshotProcessorConf: Configuration,
-) {
-    val bomDefault = "androidx.compose:compose-bom:2025.12.01"
-    val defaultProcessor = "com.fediim:autoshot-processor:1.0.0-alpha01"
-    val defaultAnnotation = "com.fediim:autoshot-annotation:1.0.0-alpha01"
-    val defaultValidationApi = "com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha11"
+    private fun Project.configureModuleDependencies(
+        isKspAvailable: Boolean,
+        disableKspApp: Boolean,
+        autoshotProcessorConf: Configuration,
+        bom: Any,
+        annotationLib: Any,
+        processorLib: Any,
+    ) {
+        dependencies {
+            add("implementation", platform(bom))
+            add("implementation", annotationLib)
+            add("implementation", "androidx.compose.ui:ui-tooling-preview")
+            add("debugImplementation", "androidx.compose.ui:ui-tooling")
 
-    val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
-    val bom = libs.findLibrary("androidx-compose-bom").map { it.get() }.orElse(null) ?: bomDefault
-    val annotationLib = libs.findLibrary("autoshot-annotation").map { it.get() }.orElse(null) ?: defaultAnnotation
-    val processorLib = libs.findLibrary("autoshot-processor").map { it.get() }.orElse(null) ?: defaultProcessor
-    val screenshotValidationApiLib = libs.findLibrary("screenshot-validation-api").map { it.get() }.orElse(null) ?: defaultValidationApi
-
-    dependencies {
-        add("implementation", platform(bom))
-        add("implementation", annotationLib)
-        add("implementation", "androidx.compose.ui:ui-tooling-preview")
-        add("implementation", screenshotValidationApiLib)
-        add("debugImplementation", "androidx.compose.ui:ui-tooling")
-        add("screenshotTestImplementation", "androidx.compose.ui:ui-tooling")
-
-        add(autoshotProcessorConf.name, processorLib)
-        if (isKspAvailable && !disableKspApp) {
-            add("ksp", processorLib)
+            add(autoshotProcessorConf.name, processorLib)
+            if (isKspAvailable && !disableKspApp) {
+                add("ksp", processorLib)
+            }
         }
+    }
+
+    private fun addDependency(
+        collector: DependencyCollector,
+        dependency: Any,
+        dependencyHandler: DependencyHandler,
+    ) {
+        when (dependency) {
+            is Dependency -> collector.add(dependency)
+            is CharSequence -> collector.add(dependency)
+            else -> collector.add(dependencyHandler.create(dependency))
+        }
+    }
+
+    private fun String.capitalizeName(): String = replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+    }
+
+    private companion object {
+        const val DEFAULT_SUITE_NAME = "screenshotTest"
+        const val DEFAULT_ENGINE_VERSION = "0.0.1-alpha16"
+        const val DEFAULT_COMPOSE_BOM = "androidx.compose:compose-bom:2026.06.01"
+        const val DEFAULT_PROCESSOR = "com.fediim:autoshot-processor:1.0.0-alpha02"
+        const val DEFAULT_ANNOTATION = "com.fediim:autoshot-annotation:1.0.0-alpha02"
+        const val DEFAULT_VALIDATION_API = "com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16"
     }
 }

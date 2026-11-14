@@ -237,12 +237,12 @@ class StandaloneParserGeneratorTest {
         assertTrue(content.contains("package com.example"))
         assertTrue(content.contains("import com.android.tools.screenshot.PreviewTest"))
         assertTrue(content.contains("import androidx.compose.runtime.Composable"))
-        assertTrue(content.contains("import com.example.ui.MyComponent"))
-        assertTrue(content.contains("class MyFileScreenshotTest {"))
+        assertTrue(!content.contains("import com.example.ui.MyComponent"))
+        assertTrue(!content.contains("class MyFileScreenshotTest"))
         assertTrue(content.contains("@PreviewTest"))
         assertTrue(content.contains("@Composable"))
         assertTrue(content.contains("@Preview(name = \"Dark\")"))
-        assertTrue(content.contains("fun testMyComponent()"))
+        assertTrue(content.contains("internal fun TestMyComponent()"))
         assertTrue(content.contains("MyComponent()"))
     }
 
@@ -277,8 +277,8 @@ class StandaloneParserGeneratorTest {
         assertTrue(generatedFile.exists())
 
         val content = generatedFile.readText()
-        assertTrue(content.contains("class MyFileScreenshotTest {"))
-        assertTrue(content.contains("@PreviewParameter(MyProvider::class) param: MyType"))
+        assertTrue(!content.contains("class MyFileScreenshotTest"))
+        assertTrue(content.contains("fun TestMyComponent(@PreviewParameter(MyProvider::class) param: MyType)"))
         assertTrue(content.contains("MyComponent(param)"))
     }
 
@@ -361,15 +361,15 @@ class StandaloneParserGeneratorTest {
         val genFile1 = File(outDir, "com/example/components/ComponentScreenshotTest.kt")
         assertTrue(genFile1.exists())
         val content1 = genFile1.readText()
-        assertTrue(content1.contains("class ComponentScreenshotTest {"))
-        assertTrue(content1.contains("fun testMyCustomComponent()"))
+        assertTrue(!content1.contains("class ComponentScreenshotTest"))
+        assertTrue(content1.contains("fun TestMyCustomComponent()"))
 
         val genFile2 = File(outDir, "com/example/components2/Component2ScreenshotTest.kt")
         assertTrue(genFile2.exists())
         val content2 = genFile2.readText()
-        assertTrue(content2.contains("class Component2ScreenshotTest {"))
-        assertTrue(content2.contains("fun testMyCustomComponent2()"))
-        assertTrue(!content2.contains("testComponentPrivate"))
+        assertTrue(!content2.contains("class Component2ScreenshotTest"))
+        assertTrue(content2.contains("fun TestMyCustomComponent2()"))
+        assertTrue(!content2.contains("TestComponentPrivate"))
 
         val genFileExcluded = File(outDir, "com/example/excluded/ExcludedComponentScreenshotTest.kt")
         assertTrue(!genFileExcluded.exists())

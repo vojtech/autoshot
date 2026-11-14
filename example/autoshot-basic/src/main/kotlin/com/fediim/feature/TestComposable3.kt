@@ -23,18 +23,18 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 
 @Preview
 @Composable
-internal fun TestComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider ::class) item: String) {
+internal fun TestComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }
 
 @Preview
 @Composable
-private fun TestPrivateComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider ::class) item: String) {
+private fun TestPrivateComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }
 
 @Preview
 @Composable
-fun TestPublicComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider ::class) item: String) {
+fun TestPublicComposable3(@PreviewParameter(ScreenshotInternalTestParameterProvider::class) item: String) {
     Text("Hello, World!")
 }

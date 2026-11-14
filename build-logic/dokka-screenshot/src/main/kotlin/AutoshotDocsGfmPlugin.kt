@@ -31,12 +31,10 @@ class AutoshotDocsGfmPlugin : Plugin<Project> {
         with(target) {
             val generateScreenshots = tasks.register("generateScreenshotDocs", GenerateScreenshotMarkdownTask::class.java) {
                 val srcDir = layout.projectDirectory.dir("src")
-                if (srcDir.asFile.exists()) {
-                    val screenshotFiles = srcDir.asFileTree.matching {
-                        include("screenshotTest*/reference/**/*.png")
-                    }
-                    inputFiles.from(screenshotFiles)
+                val screenshotFiles = srcDir.asFileTree.matching {
+                    include("*/reference/**/*.png")
                 }
+                inputFiles.from(screenshotFiles)
                 outputDir.set(layout.buildDirectory.dir("docs/autoshot-docs/gfm"))
                 moduleName.set(project.name)
             }

@@ -25,18 +25,15 @@ import com.fediim.autoshot.example.MyWidgetPreview
 /**
  * Example of a manual screenshot test wrapper written without using AutoShot.
  *
- * This test file must reside in `src/screenshotTest/kotlin/` and complies with
- * the official Compose Screenshot Testing plugin expectations:
+ * This test file must reside in `src/<suiteName>/kotlin/` (by default `src/screenshotTest/kotlin/`)
+ * and complies with AGP's Compose Screenshot Test Suite expectations:
  * 1. It is annotated with @PreviewTest
  * 2. It is annotated with @Composable
  * 3. It has a preview annotation (e.g. @Preview)
  */
-class ManualScreenshotTest {
-
-    @PreviewTest
-    @Composable
-    @Preview(name = "Light Mode")
-    fun testMyWidgetPreview() {
-        MyWidgetPreview()
-    }
+@PreviewTest
+@Composable
+@Preview(name = "Light Mode")
+fun testMyWidgetPreview() {
+    MyWidgetPreview()
 }

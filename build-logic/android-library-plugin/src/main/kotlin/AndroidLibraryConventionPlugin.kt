@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
  * This plugin automates the configuration of an Android library project by applying commonly
  * used plugins and setting up relevant build parameters. The following plugins are applied by default:
  * - `com.android.library`: For defining an Android library project.
- * - `org.jetbrains.kotlin.android`: For Kotlin support in Android projects.
  * - `org.jlleitschuh.gradle.ktlint`: For enforcing Kotlin code style with KtLint.
  *
  * The plugin also configures the following:
@@ -48,7 +47,6 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
         with(target) {
             with(pluginManager) {
                 apply("com.android.library")
-                apply("org.jetbrains.kotlin.android")
                 apply("org.jlleitschuh.gradle.ktlint")
             }
 
